@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "pricedisplay"
+version = "0.2.0"
+description = ""
+authors = ["Lumi"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+windows-curses = {version = "^2.3.1", platform = "win32"}
+datetime = "^5.2"
+usersettings = "^1.1.5"
+pyyaml = "^6.0.1"
+requests = "^2.31.0"
+sparklines = "^0.4.2"
+argparse = "^1.4.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

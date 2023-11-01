@@ -1,0 +1,38 @@
+data:
+    source:
+        description: "The source of the price data. Either an url or a file."
+        type: string
+        question: Data source?
+        value: https://api.spot-hinta.fi/TodayAndDayForward
+    
+    updateFrequency:
+        description: "The frequency of data polling in minutes, when expecting new data."
+        type: int
+        question: Data update interval?
+        value: 5
+
+layout:
+    preferred:
+        description: "Choose the preferred layout from: none, minimal, horizontal, vertical."
+        type: string
+        question: Preferred layout?
+        value: none
+    
+    reversed:
+        description: "Reverses the order of the graph and the text block."
+        type: bool
+        question: Reverse layout?
+        value: false
+
+price:
+    high:
+        description: "Price above this value is considered low."
+        type: float
+        question: High price limit?
+        value: 10.0
+    
+    low:
+        description: "Price below this value is considered low."
+        type: float
+        question: Low price limit?
+        value: 5.0
