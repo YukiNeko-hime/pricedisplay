@@ -6,7 +6,7 @@ import requests
 
 from requests.exceptions import *
 
-__version__ = '0.2.1'
+__version__ = '0.2.3'
 
 class NoDataError(Exception):
 	pass
@@ -23,7 +23,16 @@ class PriceData:
 	_prices = None
 	_day = None
 	
-	def __init__( self, source ):
+	_dateField = 'DateTime'
+	_priceField = 'PriceWithTax'
+	
+	def __init__( self, source, dateField='', priceField='' ):
+		if dateField:
+			self._dateField = dateField
+		
+		if priceField:
+			self._priceField = priceField
+		
 		self._source = source
 		self._prices = ( 24*[None], 24*[None], 24*[None] )
 		
@@ -79,22 +88,22 @@ class PriceData:
 		"""Parses a json object to a datetime object and a two decimal price in cents."""
 		
 		try:
-			dateTime = obj['DateTime']
+			dateTime = obj[ self._dateField ]
 			date = datetime.datetime.fromisoformat( dateTime )
 			day = date.day
 			
 		except KeyError:
-			raise DataParsingError( 'No DateTime in data' )
+			raise DataParsingError( 'No ' + self._dateField + ' in data' )
 			
 		except ValueError:
 			raise DataParsingError( 'Timestamp is not in iso format' )
 		
 		try:
-			price = obj['PriceWithTax']
+			price = obj[ self._priceField ]
 			price = round( 100*price, 2 )
 			
 		except KeyError:
-			raise DataParsingError( 'No PriceWithTax in data' )
+			raise DataParsingError( 'No ' + self._priceField + ' in data' )
 			
 		except ValueError:
 			raise DataParsingError( 'Price is not a number' )

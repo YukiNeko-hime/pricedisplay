@@ -10,6 +10,18 @@ data:
         type: int
         question: Data update interval?
         value: 5
+    
+    dateField:
+        description: "The field on the json data of the source, which contains an ISO formatted date."
+        type: string
+        question: Date field in json?
+        value: DateTime
+    
+    priceField:
+        description: "The field on the json data of the source, which contains the price for the hour."
+        type: string
+        question: Price field in json?
+        value: PriceWithTax
 
 layout:
     preferred:

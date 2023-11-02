@@ -15,7 +15,7 @@ from .configparser import ConfigParsingError, CorruptedTemplateError, MissingTem
 from .datahandler import DataParsingError, NoDataError, DataRequestError
 from .graphics import WindowSizeError
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 _debug = 0
 
@@ -42,6 +42,8 @@ class App:
 		try:
 			source = options['data.source']
 			freq = options['data.updateFrequency']
+			dateField = options['data.dateField']
+			priceField = options['data.priceField']
 			preferredLayout = options['layout.preferred']
 			reversedLayout = options['layout.reversed']
 			caretAbove = options['caret.style.above']
