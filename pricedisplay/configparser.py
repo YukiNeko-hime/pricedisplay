@@ -4,7 +4,7 @@ import os
 import usersettings
 import yaml
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 class ConfigParsingError( Exception ):
 	pass
@@ -104,8 +104,9 @@ class Config(_Queries):
 		except OSError:
 			raise MissingTemplateError( 'Missing template: ' + self._templatePath )
 		
+		self._oldConfigFilePath, self._oldVersion = self._FindOldPath()
 		self._configPath = self._FindPath( path )
-		self._config = self._LoadFile()
+		self._config = self._LoadFile( self._configPath )
 		
 		try:
 			self.options = self._Parse()
@@ -117,12 +118,16 @@ class Config(_Queries):
 		"""Prompts the user to give a value for each option in the option type. Empty string sets the default."""
 		
 		for keyList, option in _OptionIterator( config ):
-			question = option['question']
-			type = option['type']
-			default = option['value']
-			
-			value = self._OptionQuestion( question, type, default )
-			option['value'] = value
+			# if option wa migrated, don't ask to edit it
+			if 'migrated' in option.keys():
+				del option['migrated']
+			else:
+				question = option['question']
+				type = option['type']
+				default = option['value']
+				
+				value = self._OptionQuestion( question, type, default )
+				option['value'] = value
 	
 	def _FindPath( self, path ):
 		"""Finds the path to the config file. Tries first the file supplied as an argument, then the default config path. If no file is found, creates one from template."""
@@ -148,14 +153,43 @@ class Config(_Queries):
 		
 		return ucfp
 	
-	def _LoadFile( self ):
+	def _FindOldPath( self ):
+		"""Finds the path of the last config file before current for migration."""
+		
+		userConfig = usersettings.appdirs.user_config_dir()
+		configPath = os.path.join( userConfig, 'pricedisplay' )
+		
+		gen = os.walk( configPath )
+		versions = next( gen )[1]
+		
+		# don't consider the current version, if it exists
+		if versions[-1] == __version__:
+			versions.pop()
+		
+		# if old versions exist, pick the latest
+		if len(versions):
+			oldVersion = versions[-1]
+			oldConfigFilePath = os.path.join( configPath, oldVersion, 'config.yml' )
+			
+			# verify that the file is readable
+			try:
+				open( oldConfigFilePath, 'r' ).close()
+			except OSError:
+				oldConfigFilePath = None
+			
+		else:
+			oldConfigFilePath = None
+		
+		return oldConfigFilePath, oldVersion
+	
+	def _LoadFile( self, path ):
 		"""Loads the config file as yaml."""
 		
-		with open( self._configPath, 'r' ) as file:
+		with open( path, 'r' ) as file:
 			try:
 				config = yaml.safe_load( file )
 			except yaml.scanner.ScannerError:
-				raise ConfigParsingError( "Can't parse the configuration file: " + self._configPath )
+				raise ConfigParsingError( "Can't parse the configuration file: " + path )
 		
 		return config
 	
@@ -182,7 +216,14 @@ class Config(_Queries):
 			except yaml.scanner.ScannerError:
 				raise TemplateParsingError( "Can't parse the template file: " + self._templatePath )
 		
-		edit = self._YesNo( 'Do you want to edit the configuration file?' )
+		question = 'Do you want to edit the configuration file?'
+		if self._oldConfigFilePath:
+			migrate = self._YesNo( 'Do you want to migrate the old configuration file (version ' + self._oldVersion + ')?' )
+			if migrate:
+				self.Migrate( config )
+				question = 'Do you want to edit the new options?'
+		
+		edit = self._YesNo( question )
 		if edit:
 			self._Edit( config )
 		
@@ -190,6 +231,26 @@ class Config(_Queries):
 			yaml.safe_dump( config, file )
 		
 		self._config = config
+	
+	def Migrate( self, config ):
+		old = self._LoadFile( self._oldConfigFilePath )
+		
+		for key, option in _OptionIterator( old ):
+			try:
+				# find the old option in the new template, if it exists
+				keys = key.split('.')
+				item = config
+				for key in keys:
+					item = item[key]
+			
+			# No such option in the new config file, skip it.
+			except KeyError:
+				pass
+			
+			# if the option type matches, overwrite the default in template
+			if item['type'] == option['type']:
+				item['value'] = option['value']
+				item['migrated'] = True
 	
 	def Reset( self ):
 		"""Asks the user to resets the current cpnfiguration file, with an option for editing the values. If the user declines, raises a ConfigParsingError."""
