@@ -29,7 +29,20 @@ caret:
         description: "The number of past hours visible in the graph. Negative number parses to zero. If the number of hours would exceed the width of the display, shows as many as can be fitted."
         type: int
         question: Past hours to show?
-        value: 9
+        value: 8
+        
+    style:
+        above:
+            description: "The style of the carot above the current hour in the graph."
+            type: char
+            question: Carot above graph?
+            value: ▼
+        
+        below:
+            description: "The style of the carot below the current hour in the graph."
+            type: char
+            question: Carot below graph?
+            value: ▲
 
 price:
     high:

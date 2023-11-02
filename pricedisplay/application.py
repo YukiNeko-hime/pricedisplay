@@ -44,6 +44,8 @@ class App:
 			freq = options['data.updateFrequency']
 			preferredLayout = options['layout.preferred']
 			reversedLayout = options['layout.reversed']
+			caretAbove = options['caret.style.above']
+			caretBelow = options['caret.style.below']
 			pastHours = options['caret.past_hours']
 			high = options['price.high']
 			low = options['price.low']
@@ -52,10 +54,11 @@ class App:
 			raise MissingOptionError( err.args[0] )
 		
 		self._updateFrequency = freq
+		carets = [ caretAbove, caretBelow ]
 		
 		curses.initscr()
 		self._data = PriceData(source)
-		self._display = Display( (low, high), preferredLayout, reversedLayout, pastHours )
+		self._display = Display( (low, high), preferredLayout, reversedLayout, carets, pastHours )
 	
 	def _InitCurses( self ):
 		"""Initializes the curses environment."""
