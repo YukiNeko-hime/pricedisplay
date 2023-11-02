@@ -66,7 +66,7 @@ class _DisplayWindow:
 class Graph( _DisplayWindow ):
 	"""Displays a simple sparkline graph of the power price."""
 	
-	_caret = '^'
+	_carets = ( '▼', '▲' )
 	_pastHours = 8
 	minSize = (37, 12)
 	
@@ -93,16 +93,26 @@ class Graph( _DisplayWindow ):
 		
 		return visiblePrices
 	
-	def _AddCaret( self, lines ):
+	def _AddCarets( self, lines ):
 		"""Adds carets to indicate the current hour to the sparklines."""
 		
-		caret = self._caret
+		carets = self._carets
 		pastHours = self._pastHours
 		curHour = pastHours + 1
 		hours = len(lines[0])
 		
-		caretLine = ' '*pastHours + caret + ' '*( hours - curHour )
-		lines.append(caretLine)
+		lines = [ ' '*hours ] + lines
+		
+		for height in range( len(lines) - 1 ):
+			line = lines[height]
+			next = lines[height + 1]
+			
+			if line[ pastHours ] == ' ' and next[ pastHours ] != ' ':
+				upperCaretLine = line[ : pastHours ] + carets[0] + line[ curHour : ]
+				lines[height] = upperCaretLine
+		
+		lowerCaretLine = ' '*pastHours + carets[1] + ' '*( hours - curHour )
+		lines.append(lowerCaretLine)
 		
 		return lines
 		
@@ -113,7 +123,10 @@ class Graph( _DisplayWindow ):
 		
 		for line in lines[ : -1 ]:
 			for hour in range( len(line) ):
-				win.addstr(line[hour], colors[hour])
+				if not line[hour] == self._carets[0]:
+					win.addstr(line[hour], colors[hour])
+				else:
+					win.addstr(line[hour])
 			
 			win.addstr('\n')
 		
@@ -167,10 +180,9 @@ class Graph( _DisplayWindow ):
 		"""Updates the graph, taking into account the changes in dst."""
 		
 		win = self._win
-		
 		visiblePrices = self._GetVisiblePrices( priceData )
 		lines = self._GetSparklines( visiblePrices )
-		lines = self._AddCaret( lines )
+		lines = self._AddCarets( lines )
 		colors = self._GetColors( visiblePrices )
 		
 		win.clear()
@@ -202,8 +214,8 @@ class _DetailWindow( _DisplayWindow ):
 	
 	def _addDetail( self, name, price, linebreak=True, textStyle=None ):
 		"""Add a detail with a name and price, formatted for the display."""
-		win = self._win
 		
+		win = self._win
 		n = name.ljust( 10 )
 		p = self._formatPrice( price )
 		c = self._priceToColor( price )
@@ -220,8 +232,8 @@ class _DetailWindow( _DisplayWindow ):
 	
 	def _addMissingDetail( self, name, linebreak=True ):
 		"""Add a detail when price is missing."""
-		win = self._win
 		
+		win = self._win
 		n = name.ljust( 10 )
 		p = '-'.rjust( 6 )
 		
@@ -233,6 +245,7 @@ class _DetailWindow( _DisplayWindow ):
 	
 	def _formatPrice( self, price ):
 		"""Format price for display. Ensure two decimal places adding zeros if necessary. Pad with spaces on the left to align decimal point."""
+		
 		price = str( price )
 		i, d = price.split( '.' )
 		d = d.ljust( 2, '0' )
