@@ -4,7 +4,7 @@ import curses
 import datetime
 import sparklines
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 class WindowSizeError( Exception ):
 	def __init__( self, width, height ):
