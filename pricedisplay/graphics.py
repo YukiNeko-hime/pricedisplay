@@ -49,7 +49,10 @@ class _DisplayWindow:
 	
 	def _priceToColor( self, price ):
 		"""Finds a curses color pair based on the given price (low, medium, high)."""
-		if price < self._low:
+		
+		if price == None:
+			color = 0
+		elif price < self._low:
 			color = 1
 		elif price < self._high:
 			color = 2
@@ -66,10 +69,19 @@ class Graph( _DisplayWindow ):
 	"""Displays a simple sparkline graph of the power price."""
 	
 	_carets = ( '▼', '▲' )
-	_pastHours = 8
+	_pastHours = 9
 	minSize = (37, 12)
 	
-	def __init__( self, pos, limits, maxWidth=37, maxHeight=12, parent=None ):
+	def __init__( self, pos, limits, maxWidth=37, maxHeight=12, pastHours=9, parent=None ):
+		
+		if pastHours < 0:
+			pastHours = 0
+		
+		if pastHours > maxWidth - 2:
+			pastHours = maxWidth - 2
+		
+		self._pastHours = pastHours
+		
 		size = ( maxWidth, maxHeight )
 		_DisplayWindow.__init__(self, size, pos, limits, parent)
 	
@@ -151,7 +163,7 @@ class Graph( _DisplayWindow ):
 		
 		minimum = min( limits )
 		maximum = max( limits )
-		numLines = self._size[1]-2
+		numLines = self._size[1] - 2		# Leave room for the carets
 		hours = len( visiblePrices )
 		
 		lines = sparklines.sparklines( visiblePrices, num_lines=numLines, minimum=minimum, maximum=maximum )
@@ -167,6 +179,10 @@ class Graph( _DisplayWindow ):
 		curHour = pastHours + 1
 		
 		start = len( yesterday ) + now.hour - pastHours
+		if start < 0:
+			prices = ( -start )*[None] + prices
+			start = 0
+		
 		end = start + self._size[0] - 1
 		visiblePrices = prices[ start : end ]
 		
@@ -401,7 +417,7 @@ class Display:
 	_padding = ( 1, 3 )
 	_subs = None
 	
-	def __init__( self, limits, preferred='vertical', reversed=False, pos=( 0,0 ), parent=None ):
+	def __init__( self, limits, preferred='vertical', reversed=False, past=-40, pos=( 0,0 ), parent=None ):
 		self._subs = []
 		y, x = pos
 		w, h =self._minSize
@@ -420,11 +436,11 @@ class Display:
 		layout, size = self._ChooseLayout( parentSize, preferred )
 		
 		layoutStyle = ( layout, reversed )
-		win = self._CreateLayout( size, pos, layoutStyle, limits, parent )
+		win = self._CreateLayout( size, pos, layoutStyle, limits, past, parent )
 		
 		self._win = win
 	
-	def _CreateLayout( self, size, pos, layoutStyle, limits, parent ):
+	def _CreateLayout( self, size, pos, layoutStyle, limits, past, parent ):
 		"""Creates the layout chosen for the window from subelements."""
 		
 		layout, reversed = layoutStyle
@@ -440,21 +456,21 @@ class Display:
 			win = newWindow( h, w, y, x )
 			
 			if reversed:
-				self._VerticalLayoutInverted( limits, parent=win )
+				self._VerticalLayoutInverted( limits, past, win )
 			else:
-				self._VerticalLayout( limits, parent=win )
+				self._VerticalLayout( limits, past, win )
 			
 		elif layout == 'horizontal':
 			win = newWindow( h, w, y, x )
 			
 			if reversed:
-				self._HorizontalLayoutInverted( limits, parent=win )
+				self._HorizontalLayoutInverted( limits, past, win )
 			else:
-				self._HorizontalLayout( limits, parent=win )
+				self._HorizontalLayout( limits, past, win )
 		
 		elif layout == 'minimal':
 			win = newWindow( h, w, y, x )
-			self._MinimalLayout( limits, parent=win )
+			self._MinimalLayout( limits, past, win )
 	
 	def _ChooseLayout( self, parentSize, preferred ):
 		"""Chooses the layout based on user settings and size constraints set by the parent window or the terminal size."""
@@ -539,7 +555,7 @@ class Display:
 	
 	# Different layouts for the window
 	
-	def _HorizontalLayout(self, limits, parent):
+	def _HorizontalLayout(self, limits, past, parent):
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
@@ -549,7 +565,7 @@ class Display:
 			  + 1 + DetailsToday.minSize[1] \
 			  + 1 + DetailsTomorrow.minSize[1] + 1
 		
-		graph = Graph( ( padY, padX ), limits, maxHeight=height, parent=parent )
+		graph = Graph( ( padY, padX ), limits, maxHeight=height, pastHours=past, parent=parent )
 		self._subs.append(graph)
 		
 		# text on the right side of the graph
@@ -557,7 +573,7 @@ class Display:
 		pos = ( padY, padX + bb[1][1] )
 		self._VerticalTextBlock( pos, limits, parent )
 	
-	def _HorizontalLayoutInverted( self, limits, parent ):
+	def _HorizontalLayoutInverted( self, limits, past, parent ):
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
@@ -576,17 +592,17 @@ class Display:
 		
 		bb = lastSub.GetBoundingBox()
 		pos = ( padY, padX + bb[1][1] )
-		graph = Graph( pos, limits, maxHeight=height, parent=parent )
+		graph = Graph( pos, limits, maxHeight=height, pastHours=past, parent=parent )
 		self._subs.append(graph)
 	
-	def _MinimalLayout( self, limits, parent ):
+	def _MinimalLayout( self, limits, past, parent ):
 		"""Displays only the sparkline graph."""
 		
 		pos = self._padding
-		graph = Graph( pos, limits, parent=parent )
+		graph = Graph( pos, limits, pastHours=past, parent=parent )
 		self._subs.append(graph)
 	
-	def _VerticalLayout( self, limits, parent ):
+	def _VerticalLayout( self, limits, past, parent ):
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
@@ -596,7 +612,7 @@ class Display:
 			 + DetailsTomorrow.minSize[0]
 		
 		pos = ( padY, padX )
-		graph = Graph( pos, limits, maxWidth=width, parent=parent )
+		graph = Graph( pos, limits, maxWidth=width, pastHours=past, parent=parent )
 		self._subs.append(graph)
 		
 		# text below the graph
@@ -604,7 +620,7 @@ class Display:
 		pos = ( padY + bb[1][0], padX )
 		self._HorizontalTextBlock( pos, limits, parent )
 	
-	def _VerticalLayoutInverted( self, limits, parent ):
+	def _VerticalLayoutInverted( self, limits, past, parent ):
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
@@ -619,7 +635,7 @@ class Display:
 		
 		bb = lastSub.GetBoundingBox()
 		pos = ( padY + bb[1][0], padX )
-		graph = Graph( pos, limits, maxWidth=width, parent=parent )
+		graph = Graph( pos, limits, maxWidth=width, pastHours=past, parent=parent )
 		self._subs.append(graph)
 	
 	def _HorizontalTextBlock( self, pos, limits, parent ):

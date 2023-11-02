@@ -24,6 +24,13 @@ layout:
         question: Reverse layout?
         value: false
 
+caret:
+    past_hours:
+        description: "The number of past hours visible in the graph. Negative number parses to zero. If the number of hours would exceed the width of the display, shows as many as can be fitted."
+        type: int
+        question: Past hours to show?
+        value: 9
+
 price:
     high:
         description: "Price above this value is considered low."

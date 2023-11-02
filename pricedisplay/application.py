@@ -44,6 +44,7 @@ class App:
 			freq = options['data.updateFrequency']
 			preferredLayout = options['layout.preferred']
 			reversedLayout = options['layout.reversed']
+			pastHours = options['caret.past_hours']
 			high = options['price.high']
 			low = options['price.low']
 		
@@ -54,7 +55,7 @@ class App:
 		
 		curses.initscr()
 		self._data = PriceData(source)
-		self._display = Display( (low, high), preferredLayout, reversedLayout )
+		self._display = Display( (low, high), preferredLayout, reversedLayout, pastHours )
 	
 	def _InitCurses( self ):
 		"""Initializes the curses environment."""
@@ -213,6 +214,8 @@ def _StartApp( app ):
 	try:
 		app.Start()
 	except KeyboardInterrupt:
+		if _debug:
+			print( 'KeyboardInterrupt, exiting gracefully', file=sys.stderr )
 		sys.exit( _noErrors )
 	
 	except ( DataParsingError, NoDataError, DataRequestError ) as err:
