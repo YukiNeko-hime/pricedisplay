@@ -65,7 +65,12 @@ class _Queries:
 				raise ValueError( 'Invalid value' )
 		
 		if type == 'string':
-			return value
+			return str( value )
+		
+		if type == 'char':
+			value = str( value )
+			if len(value) == 1:
+				return value
 		
 		if type == 'bool':
 			if value in ( True, 'True', 'true', '1' ):
