@@ -17,25 +17,26 @@ class DataParsingError(Exception):
 class DataRequestError(Exception):
 	pass
 
+class MissingOptionError( Exception ):
+	def __init__( self, option ):
+		self.option = option
+		msg = 'Missing option: ' + option
+		
+		Exception.__init__( self, msg )
+
 class PriceData:
 	"""Retrieves, parses and updates the price data from the specified source."""
 	
 	_prices = None
 	_day = None
 	
-	_defaultOptions = {
-		'source': 'https://api.spot-hinta.fi/TodayAndDayForward',
-		'dateField': 'DateTime',
-		'priceField': 'PriceWithTax'
-	}
-	
 	def __init__( self, options ):
-		opts = self._defaultOptions.copy()
-		opts.update( options )
-		
-		self._dateField = opts['dateField']
-		self._priceField = opts['priceField']
-		self._source = opts['source']
+		try:
+			self._dateField = options['dateField']
+			self._priceField = options['priceField']
+			self._source = options['source']
+		except KeyError as err:
+			raise MissingOptionError( err.args )
 		
 		self._prices = ( 24*[None], 24*[None], 24*[None] )
 		

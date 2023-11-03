@@ -46,23 +46,23 @@ class App:
 		try:
 			freq = options['data.updateFrequency']
 			
-			dataOptions['source'] = options['data.source']
 			dataOptions['dateField'] = options['data.dateField']
 			dataOptions['priceField'] = options['data.priceField']
+			dataOptions['source'] = options['data.source']
 			
-			displayOptions['preferred'] = options['layout.preferred']
-			displayOptions['reverse'] = options['layout.reverse']
-			displayOptions['pastHours'] = options['caret.past_hours']
-			
-			displayOptions['carets'] = [
+			displayOptions['carets'] = (
 				options['caret.style.above'],
 				options['caret.style.below']
-			]
+			)
 			
 			displayOptions['limits'] = (
 				options['price.low'],
 				options['price.high']
 			)
+			
+			displayOptions['pastHours'] = options['caret.past_hours']
+			displayOptions['preferred'] = options['layout.preferred']
+			displayOptions['reverse'] = options['layout.reverse']
 		
 		except KeyError as err:
 			raise MissingOptionError( err.args[0] )
