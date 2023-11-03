@@ -15,7 +15,7 @@ from .configparser import ConfigParsingError, CorruptedTemplateError, MissingTem
 from .datahandler import DataParsingError, NoDataError, DataRequestError
 from .graphics import WindowSizeError
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 _debug = 0
 
@@ -39,28 +39,39 @@ class App:
 	_running = False
 	
 	def __init__( self, options ):
+		dataOptions = {}
+		displayOptions = {}
+		
+		# check that all options are present
 		try:
-			source = options['data.source']
 			freq = options['data.updateFrequency']
-			dateField = options['data.dateField']
-			priceField = options['data.priceField']
-			preferredLayout = options['layout.preferred']
-			reversedLayout = options['layout.reversed']
-			caretAbove = options['caret.style.above']
-			caretBelow = options['caret.style.below']
-			pastHours = options['caret.past_hours']
-			high = options['price.high']
-			low = options['price.low']
+			
+			dataOptions['source'] = options['data.source']
+			dataOptions['dateField'] = options['data.dateField']
+			dataOptions['priceField'] = options['data.priceField']
+			
+			displayOptions['preferred'] = options['layout.preferred']
+			displayOptions['reverse'] = options['layout.reversed']
+			displayOptions['pastHours'] = options['caret.past_hours']
+			
+			displayOptions['carets'] = [
+				options['caret.style.above'],
+				options['caret.style.below']
+			]
+			
+			displayOptions['limits'] = (
+				options['price.low'],
+				options['price.high']
+			)
 		
 		except KeyError as err:
 			raise MissingOptionError( err.args[0] )
 		
 		self._updateFrequency = freq
-		carets = [ caretAbove, caretBelow ]
 		
 		curses.initscr()
-		self._data = PriceData(source)
-		self._display = Display( (low, high), preferredLayout, reversedLayout, carets, pastHours )
+		self._data = PriceData( dataOptions )
+		self._display = Display( displayOptions )
 	
 	def _InitCurses( self ):
 		"""Initializes the curses environment."""

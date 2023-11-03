@@ -4,7 +4,7 @@ import curses
 import datetime
 import sparklines
 
-__version__ = '0.2.2'
+__version__ = '0.2.4'
 
 class WindowSizeError( Exception ):
 	def __init__( self, width, height ):
@@ -68,22 +68,31 @@ class _DisplayWindow:
 class Graph( _DisplayWindow ):
 	"""Displays a simple sparkline graph of the power price."""
 	
-	_carets = [ '▼', '▲' ]
-	_pastHours = 8
 	minSize = (37, 12)
+	_defaultOptions = {
+		'width': minSize[0],
+		'height': minSize[1],
+		'carets': [ '▼', '▲' ],
+		'pastHours': 8
+	}
 	
-	def __init__( self, pos, limits, maxWidth=37, maxHeight=12, carets=[ '▼', '▲' ], pastHours=8, parent=None ):
-		self._carets = carets
+	def __init__( self, pos, limits, options, parent=None ):
+		opts = self._defaultOptions.copy()
+		opts.update( options )
+		
+		self._carets = opts['carets']
+		pastHours = opts['pastHours']
+		width = opts['width']
 		
 		if pastHours < 0:
 			pastHours = 0
 		
-		if pastHours > maxWidth - 2:
-			pastHours = maxWidth - 2
+		if pastHours > width - 2:
+			pastHours = width - 2
 		
 		self._pastHours = pastHours
 		
-		size = ( maxWidth, maxHeight )
+		size = ( opts['width'], opts['height'] )
 		_DisplayWindow.__init__(self, size, pos, limits, parent)
 	
 	def _AccountForDST( self, yesterday, prices ):
@@ -418,7 +427,7 @@ class Display:
 	_padding = ( 1, 3 )
 	_subs = None
 	
-	def __init__( self, limits, preferred='vertical', reversed=False, carets=[ '▼', ' ' ], past=8, pos=( 0,0 ), parent=None ):
+	def __init__( self, options, pos=( 0,0 ), parent=None ):
 		self._subs = []
 		y, x = pos
 		w, h =self._minSize
@@ -434,17 +443,18 @@ class Display:
 		if pw < w + x or ph < h + y:
 			raise WindowPositionError( y, x )
 		
-		layout, size = self._ChooseLayout( parentSize, preferred )
+		layout, size = self._ChooseLayout( parentSize, options['preferred'] )
+		options['layout'] = layout
 		
-		layoutStyle = ( layout, reversed )
-		win = self._CreateLayout( size, pos, layoutStyle, limits, carets, past, parent )
+		win = self._CreateLayout( size, pos, options, parent )
 		
 		self._win = win
 	
-	def _CreateLayout( self, size, pos, layoutStyle, limits, carets, past, parent ):
+	def _CreateLayout( self, size, pos, options, parent ):
 		"""Creates the layout chosen for the window from subelements."""
 		
-		layout, reversed = layoutStyle
+		layout = options['layout']
+		reverse = options['reverse']
 		
 		if parent:
 			newWindow = parent.subwin
@@ -456,22 +466,22 @@ class Display:
 		if layout == 'vertical':
 			win = newWindow( h, w, y, x )
 			
-			if reversed:
-				self._VerticalLayoutInverted( limits, carets, past, win )
+			if reverse:
+				self._VerticalLayoutInverted( options, win )
 			else:
-				self._VerticalLayout( limits, carets, past, win )
+				self._VerticalLayout( options, win )
 			
 		elif layout == 'horizontal':
 			win = newWindow( h, w, y, x )
 			
-			if reversed:
-				self._HorizontalLayoutInverted( limits, carets, past, win )
+			if reverse:
+				self._HorizontalLayoutInverted( options, win )
 			else:
-				self._HorizontalLayout( limits, carets, past, win )
+				self._HorizontalLayout( options, win )
 		
 		elif layout == 'minimal':
 			win = newWindow( h, w, y, x )
-			self._MinimalLayout( limits, carets, past, win )
+			self._MinimalLayout( options, win )
 	
 	def _ChooseLayout( self, parentSize, preferred ):
 		"""Chooses the layout based on user settings and size constraints set by the parent window or the terminal size."""
@@ -556,17 +566,21 @@ class Display:
 	
 	# Different layouts for the window
 	
-	def _HorizontalLayout(self, limits, carets, past, parent):
+	def _HorizontalLayout(self, options, parent):
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
+		limits = options['limits']
 		
 		height = DetailCurrentHour.minSize[1] \
 			  + DetailNextHour.minSize[1] \
 			  + 1 + DetailsToday.minSize[1] \
 			  + 1 + DetailsTomorrow.minSize[1] + 1
 		
-		graph = Graph( ( padY, padX ), limits, maxHeight=height, carets=carets, pastHours=past, parent=parent )
+		options['height'] = height
+		
+		pos = ( padY, padX )
+		graph = Graph( pos, limits, options, parent )
 		self._subs.append(graph)
 		
 		# text on the right side of the graph
@@ -574,10 +588,11 @@ class Display:
 		pos = ( padY, padX + bb[1][1] )
 		self._VerticalTextBlock( pos, limits, parent )
 	
-	def _HorizontalLayoutInverted( self, limits, carets, past, parent ):
+	def _HorizontalLayoutInverted( self, options, parent ):
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
+		limits = options['limits']
 		
 		height = DetailCurrentHour.minSize[1] \
 			  + DetailNextHour.minSize[1] \
@@ -587,33 +602,38 @@ class Display:
 			  + DetailsTomorrow.minSize[1] \
 			  + padY
 		
+		options['height'] = height
+		
 		# text on the left side of the graph
 		pos = ( padY, padX )
 		lastSub = self._VerticalTextBlock( pos, limits, parent )
 		
 		bb = lastSub.GetBoundingBox()
 		pos = ( padY, padX + bb[1][1] )
-		graph = Graph( pos, limits, maxHeight=height, carets=carets, pastHours=past, parent=parent )
+		graph = Graph( pos, limits, options, parent )
 		self._subs.append(graph)
 	
-	def _MinimalLayout( self, limits, carets, past, parent ):
+	def _MinimalLayout( self, options, parent ):
 		"""Displays only the sparkline graph."""
 		
 		pos = self._padding
-		graph = Graph( pos, limits, carets=carets, pastHours=past, parent=parent )
+		graph = Graph( pos, options['limits'], options, parent )
 		self._subs.append(graph)
 	
-	def _VerticalLayout( self, limits, carets, past, parent ):
+	def _VerticalLayout( self, options, parent ):
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
+		limits = options['limits']
 		
 		width = DetailsToday.minSize[0] \
 			 + padX \
 			 + DetailsTomorrow.minSize[0]
 		
+		options['width'] = width
+		
 		pos = ( padY, padX )
-		graph = Graph( pos, limits, maxWidth=width, carets=carets, pastHours=past, parent=parent )
+		graph = Graph( pos, limits, options, parent )
 		self._subs.append(graph)
 		
 		# text below the graph
@@ -621,14 +641,17 @@ class Display:
 		pos = ( padY + bb[1][0], padX )
 		self._HorizontalTextBlock( pos, limits, parent )
 	
-	def _VerticalLayoutInverted( self, limits, carets, past, parent ):
+	def _VerticalLayoutInverted( self, options, parent ):
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
+		limits = options['limits']
 		
 		width = DetailsToday.minSize[0] \
 			 + padX \
 			 + DetailsTomorrow.minSize[0]
+		
+		options['width'] = width
 		
 		# text above the graph
 		pos = ( padY, padX )
@@ -636,7 +659,7 @@ class Display:
 		
 		bb = lastSub.GetBoundingBox()
 		pos = ( padY + bb[1][0], padX )
-		graph = Graph( pos, limits, maxWidth=width, carets=carets, pastHours=past, parent=parent )
+		graph = Graph( pos, limits, options, parent )
 		self._subs.append(graph)
 	
 	def _HorizontalTextBlock( self, pos, limits, parent ):
@@ -669,22 +692,22 @@ class Display:
 		
 		padY, padX = self._padding
 		
-		current = DetailCurrentHour( pos, limits, parent=parent )
+		current = DetailCurrentHour( pos, limits, parent )
 		self._subs.append(current)
 		
 		bb = current.GetBoundingBox()
 		pos = ( bb[1][0], bb[0][1] )
-		next = DetailNextHour( pos, limits, parent=parent )
+		next = DetailNextHour( pos, limits, parent )
 		self._subs.append(next)
 		
 		bb = next.GetBoundingBox()
 		pos = (  bb[1][0] + padY, bb[0][1] )
-		today = DetailsToday( pos, limits, parent=parent )
+		today = DetailsToday( pos, limits, parent )
 		self._subs.append(today)
 		
 		bb = today.GetBoundingBox()
 		pos = ( bb[1][0] + padY, bb[0][1] )
-		tomorrow = DetailsTomorrow( pos, limits, parent=parent )
+		tomorrow = DetailsTomorrow( pos, limits, parent )
 		self._subs.append(tomorrow)
 		
 		return tomorrow

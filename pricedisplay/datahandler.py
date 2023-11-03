@@ -6,7 +6,7 @@ import requests
 
 from requests.exceptions import *
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 class NoDataError(Exception):
 	pass
@@ -23,17 +23,20 @@ class PriceData:
 	_prices = None
 	_day = None
 	
-	_dateField = 'DateTime'
-	_priceField = 'PriceWithTax'
+	_defaultOptions = {
+		'source': 'https://api.spot-hinta.fi/TodayAndDayForward',
+		'dateField': 'DateTime',
+		'priceField': 'PriceWithTax'
+	}
 	
-	def __init__( self, source, dateField='', priceField='' ):
-		if dateField:
-			self._dateField = dateField
+	def __init__( self, options ):
+		opts = self._defaultOptions.copy()
+		opts.update( options )
 		
-		if priceField:
-			self._priceField = priceField
+		self._dateField = opts['dateField']
+		self._priceField = opts['priceField']
+		self._source = opts['source']
 		
-		self._source = source
 		self._prices = ( 24*[None], 24*[None], 24*[None] )
 		
 		today = datetime.datetime.today()
