@@ -51,7 +51,7 @@ class App:
 			dataOptions['priceField'] = options['data.priceField']
 			
 			displayOptions['preferred'] = options['layout.preferred']
-			displayOptions['reverse'] = options['layout.reversed']
+			displayOptions['reverse'] = options['layout.reverse']
 			displayOptions['pastHours'] = options['caret.past_hours']
 			
 			displayOptions['carets'] = [

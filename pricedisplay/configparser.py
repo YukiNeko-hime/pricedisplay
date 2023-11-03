@@ -4,7 +4,7 @@ import os
 import usersettings
 import yaml
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 class ConfigParsingError( Exception ):
 	pass
@@ -98,6 +98,7 @@ class Config(_Queries):
 			modulePath = __file__
 			packagePath = os.path.dirname( modulePath )
 			self._templatePath = os.path.join( packagePath, 'config.template' )
+			self._migrateRulesPath = os.path.join( packagePath, 'config.migrate' )
 		
 		try:
 			open( self._templatePath, 'r' ).close()
@@ -235,8 +236,19 @@ class Config(_Queries):
 	def Migrate( self, config ):
 		old = self._LoadFile( self._oldConfigFilePath )
 		
+		rulebook = { 'renamed': {} }
+		try:
+			rules = self._LoadFile( self._migrateRulesPath )
+			rulebook.update( rules )
+		except OSError:
+			print( 'No migration rules found, continuing without.' )
+		
 		for key, option in _OptionIterator( old ):
 			try:
+				# use migration rules for the keys
+				if key in rulebook['renamed'].keys():
+					key = rulebook['renamed'][key]
+				
 				# find the old option in the new template, if it exists
 				keys = key.split('.')
 				item = config

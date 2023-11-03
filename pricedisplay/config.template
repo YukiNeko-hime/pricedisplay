@@ -30,7 +30,7 @@ layout:
         question: Preferred layout?
         value: none
     
-    reversed:
+    reverse:
         description: "Reverses the order of the graph and the text block."
         type: bool
         question: Reverse layout?
