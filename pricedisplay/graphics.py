@@ -7,6 +7,13 @@ import warnings
 
 __version__ = '0.2.4'
 
+class MissingOptionError( Exception ):
+	def __init__( self, option ):
+		self.option = option
+		msg = 'Missing option: ' + option
+		
+		Exception.__init__( self, msg )
+
 class WindowSizeError( Exception ):
 	def __init__( self, width, height ):
 		self.height = height
@@ -23,14 +30,18 @@ class WindowPositionError( Exception ):
 
 class _DisplayWindow:
 	_minSize = (0,0)
-	_normalTimezone = +2
 	
-	def __init__( self, size, pos, limits, parent=None ):
+	def __init__( self, size, pos, options, parent=None ):
 		y, x = pos
 		w, h = size
 		self._boundingBox = ((y, x), (y + h, x + w))
-		self._low, self._high = limits
+		self._low, self._high = options['limits']
 		self._size = size		
+		
+		try:
+			self._normalTimezone = options['normalTimezone']
+		except KeyError as err:
+			raise MissingOptionError( err.args )
 		
 		if parent:
 			ph, pw = parent.getmaxyx()
@@ -92,7 +103,7 @@ class Graph( _DisplayWindow ):
 		'pastHours': 8
 	}
 	
-	def __init__( self, pos, limits, options, parent=None ):
+	def __init__( self, pos, options, parent=None ):
 		opts = self._defaultOptions.copy()
 		opts.update( options )
 		
@@ -109,7 +120,7 @@ class Graph( _DisplayWindow ):
 		self._pastHours = pastHours
 		
 		size = ( opts['width'], opts['height'] )
-		_DisplayWindow.__init__(self, size, pos, limits, parent)
+		_DisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _AddCarets( self, lines ):
 		"""Adds carets to indicate the current hour to the sparklines."""
@@ -166,10 +177,11 @@ class Graph( _DisplayWindow ):
 	def _GetSparklines( self, visiblePrices ):
 		"""Gets the sparklines for visible prices."""
 		
-		limits = [ i for i in visiblePrices if i != None ] + [0]
+		# filter out None for comparing prices
+		filteredPrices = [ i for i in visiblePrices if i != None ] + [0]
 		
-		minimum = min( limits )
-		maximum = max( limits )
+		minimum = min( filteredPrices )
+		maximum = max( filteredPrices )
 		numLines = self._size[1] - 2		# Leave room for the carets
 		hours = len( visiblePrices )
 		
@@ -217,8 +229,8 @@ class Graph( _DisplayWindow ):
 class _DetailWindow( _DisplayWindow ):
 	"""Displays price details in text."""
 	
-	def __init__( self, pos, size, limits, parent=None ):
-		_DisplayWindow.__init__(self, size, pos, limits, parent)
+	def __init__( self, pos, size, options, parent=None ):
+		_DisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _accountForDST( self, hour, prices ):
 		"""Account for the change in daylight saving time."""
@@ -284,8 +296,8 @@ class DetailCurrentHour( _DetailWindow ):
 	
 	minSize = (17,1)
 	
-	def __init__( self, pos, limits, parent=None ):
-		_DetailWindow.__init__( self, pos, self.minSize, limits, parent )
+	def __init__( self, pos, options, parent=None ):
+		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
 	
 	def Update(self, prices):
 		"""Update the displayed price."""
@@ -314,8 +326,8 @@ class DetailNextHour( _DetailWindow ):
 	
 	minSize = (17,1)
 	
-	def __init__( self, pos, limits, parent=None ):
-		_DetailWindow.__init__( self, pos, self.minSize, limits, parent )
+	def __init__( self, pos, options, parent=None ):
+		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
 	
 	def Update( self, prices ):
 		"""Update the displayed price."""
@@ -347,18 +359,19 @@ class DetailsToday( _DetailWindow ):
 	
 	minSize = (17,5)
 	
-	def __init__( self, pos, limits, parent=None ):
-		_DetailWindow.__init__( self, pos, self.minSize, limits, parent )
+	def __init__( self, pos, options, parent=None ):
+		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
 	
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
+		# filter out None from the prices for comparison
 		prices = prices[1]
-		limits = [ i for i in prices if i != None ]
+		filteredPrices = [ i for i in prices if i != None ]
 		
-		low = min( limits )
-		high = max( limits )
-		average = sum( limits ) / len( limits )
+		low = min( filteredPrices )
+		high = max( filteredPrices )
+		average = sum( filteredPrices ) / len( filteredPrices )
 		average = round( average, 2 )
 		
 		self._addDetail ('highest:', high )
@@ -394,18 +407,19 @@ class DetailsTomorrow( _DetailWindow ):
 	
 	minSize = (17,5)
 	
-	def __init__( self, pos, limits, parent=None ):
-		_DetailWindow.__init__( self, pos, self.minSize, limits, parent )
+	def __init__( self, pos, options, parent=None ):
+		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
 	
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
+		# filter out None from the prices for comparison
 		prices = prices[1] + prices[2]
-		limits = [ i for i in prices if i != None ]
+		filteredPrices = [ i for i in prices if i != None ]
 		
-		low = min( limits )
-		high = max( limits )
-		average = sum( limits ) / len( limits )
+		low = min( filteredPrices )
+		high = max( filteredPrices )
+		average = sum( filteredPrices ) / len( filteredPrices )
 		average = round( average, 2 )
 		
 		self._addDetail( 'highest:', high )
@@ -584,7 +598,6 @@ class Display:
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
-		limits = options['limits']
 		
 		height = DetailCurrentHour.minSize[1] \
 			  + DetailNextHour.minSize[1] \
@@ -600,13 +613,12 @@ class Display:
 		# text on the right side of the graph
 		bb = graph.GetBoundingBox()
 		pos = ( padY, padX + bb[1][1] )
-		self._VerticalTextBlock( pos, limits, parent )
+		self._VerticalTextBlock( pos, options, parent )
 	
 	def _HorizontalLayoutInverted( self, options, parent ):
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
-		limits = options['limits']
 		
 		height = DetailCurrentHour.minSize[1] \
 			  + DetailNextHour.minSize[1] \
@@ -620,25 +632,24 @@ class Display:
 		
 		# text on the left side of the graph
 		pos = ( padY, padX )
-		lastSub = self._VerticalTextBlock( pos, limits, parent )
+		lastSub = self._VerticalTextBlock( pos, options, parent )
 		
 		bb = lastSub.GetBoundingBox()
 		pos = ( padY, padX + bb[1][1] )
-		graph = Graph( pos, limits, options, parent )
+		graph = Graph( pos, options, parent )
 		self._subs.append(graph)
 	
 	def _MinimalLayout( self, options, parent ):
 		"""Displays only the sparkline graph."""
 		
 		pos = self._padding
-		graph = Graph( pos, options['limits'], options, parent )
+		graph = Graph( pos, options, parent )
 		self._subs.append(graph)
 	
 	def _VerticalLayout( self, options, parent ):
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
-		limits = options['limits']
 		
 		width = DetailsToday.minSize[0] \
 			 + padX \
@@ -647,19 +658,18 @@ class Display:
 		options['width'] = width
 		
 		pos = ( padY, padX )
-		graph = Graph( pos, limits, options, parent )
+		graph = Graph( pos, options, parent )
 		self._subs.append(graph)
 		
 		# text below the graph
 		bb = graph.GetBoundingBox()
 		pos = ( padY + bb[1][0], padX )
-		self._HorizontalTextBlock( pos, limits, parent )
+		self._HorizontalTextBlock( pos, options, parent )
 	
 	def _VerticalLayoutInverted( self, options, parent ):
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
-		limits = options['limits']
 		
 		width = DetailsToday.minSize[0] \
 			 + padX \
@@ -669,59 +679,59 @@ class Display:
 		
 		# text above the graph
 		pos = ( padY, padX )
-		lastSub = self._HorizontalTextBlock( pos, limits, parent )
+		lastSub = self._HorizontalTextBlock( pos, options, parent )
 		
 		bb = lastSub.GetBoundingBox()
 		pos = ( padY + bb[1][0], padX )
-		graph = Graph( pos, limits, options, parent )
+		graph = Graph( pos, options, parent )
 		self._subs.append(graph)
 	
-	def _HorizontalTextBlock( self, pos, limits, parent ):
+	def _HorizontalTextBlock( self, pos, options, parent ):
 		"""Displays a horzontal block of price details for today and tomorrow."""
 		
 		padY, padX = self._padding
 		
-		current = DetailCurrentHour( pos, limits, parent )
+		current = DetailCurrentHour( pos, options, parent )
 		self._subs.append(current)
 		
 		bb = current.GetBoundingBox()
 		pos = ( bb[0][0], padX + bb[1][1] )
-		next = DetailNextHour( pos, limits, parent )
+		next = DetailNextHour( pos, options, parent )
 		self._subs.append(next)
 		
 		bb = current.GetBoundingBox()
 		pos = ( padY + bb[1][0], padX )
-		today = DetailsToday( pos, limits, parent )
+		today = DetailsToday( pos, options, parent )
 		self._subs.append(today)
 		
 		bb = today.GetBoundingBox()
 		pos = ( bb[0][0], padX + bb[1][1] )
-		tomorrow = DetailsTomorrow( pos, limits, parent )
+		tomorrow = DetailsTomorrow( pos, options, parent )
 		self._subs.append(tomorrow)
 		
 		return tomorrow
 	
-	def _VerticalTextBlock( self, pos, limits, parent ):
+	def _VerticalTextBlock( self, pos, options, parent ):
 		"""Displays a vertical block of price details for today and tomorrow."""
 		
 		padY, padX = self._padding
 		
-		current = DetailCurrentHour( pos, limits, parent )
+		current = DetailCurrentHour( pos, options, parent )
 		self._subs.append(current)
 		
 		bb = current.GetBoundingBox()
 		pos = ( bb[1][0], bb[0][1] )
-		next = DetailNextHour( pos, limits, parent )
+		next = DetailNextHour( pos, options, parent )
 		self._subs.append(next)
 		
 		bb = next.GetBoundingBox()
 		pos = (  bb[1][0] + padY, bb[0][1] )
-		today = DetailsToday( pos, limits, parent )
+		today = DetailsToday( pos, options, parent )
 		self._subs.append(today)
 		
 		bb = today.GetBoundingBox()
 		pos = ( bb[1][0] + padY, bb[0][1] )
-		tomorrow = DetailsTomorrow( pos, limits, parent )
+		tomorrow = DetailsTomorrow( pos, options, parent )
 		self._subs.append(tomorrow)
 		
 		return tomorrow

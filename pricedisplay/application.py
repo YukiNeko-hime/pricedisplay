@@ -63,6 +63,8 @@ class App:
 			displayOptions['pastHours'] = options['caret.past_hours']
 			displayOptions['preferred'] = options['layout.preferred']
 			displayOptions['reverse'] = options['layout.reverse']
+			
+			displayOptions['normalTimezone'] = options['data.normalTimezone']
 		
 		except KeyError as err:
 			raise MissingOptionError( err.args[0] )

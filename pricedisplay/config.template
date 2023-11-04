@@ -22,6 +22,12 @@ data:
         type: string
         question: Price field in json?
         value: PriceWithTax
+    
+    normalTimezone:
+        description: "The timezone in normal time (used for dst changes)."
+        type: int
+        question: Normal time timezone?
+        value: +2
 
 layout:
     preferred:
