@@ -3,6 +3,7 @@
 import curses
 import datetime
 import sparklines
+import warnings
 
 __version__ = '0.2.4'
 
@@ -172,7 +173,10 @@ class Graph( _DisplayWindow ):
 		numLines = self._size[1] - 2		# Leave room for the carets
 		hours = len( visiblePrices )
 		
-		lines = sparklines.sparklines( visiblePrices, num_lines=numLines, minimum=minimum, maximum=maximum )
+		# don't warn about negative values
+		with warnings.catch_warnings():
+			warnings.simplefilter( 'ignore' )
+			lines = sparklines.sparklines( visiblePrices, num_lines=numLines, minimum=minimum, maximum=maximum )
 		
 		return lines
 	
