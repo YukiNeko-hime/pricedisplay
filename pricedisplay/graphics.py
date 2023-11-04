@@ -22,6 +22,7 @@ class WindowPositionError( Exception ):
 
 class _DisplayWindow:
 	_minSize = (0,0)
+	_normalTimezone = +2
 	
 	def __init__( self, size, pos, limits, parent=None ):
 		y, x = pos
@@ -46,6 +47,20 @@ class _DisplayWindow:
 			self._win = parent.subwin(h, w, y, x)
 		else:
 			self._win = curses.newwin(h, w, y, x)
+	
+	def _AccountForDST( self, hoursInDay ):
+		"""Takes into account the daylight saving time change, when finding the index in prices."""
+		
+		now = datetime.datetime.now()
+		utc = datetime.datetime.utcnow()
+		
+		timezone = now.hour - utc.hour
+		offset = timezone - self._normalTimezone
+		delta = hoursInDay - 24
+		
+		normalHour = now.hour + (abs(delta) + delta)/2 - offset
+		
+		return int( normalHour )
 	
 	def _priceToColor( self, price ):
 		"""Finds a curses color pair based on the given price (low, medium, high)."""
@@ -94,25 +109,6 @@ class Graph( _DisplayWindow ):
 		
 		size = ( opts['width'], opts['height'] )
 		_DisplayWindow.__init__(self, size, pos, limits, parent)
-	
-	def _AccountForDST( self, yesterday, prices ):
-		"""Takes into account the daylight saving time change, when finding the prices visible in the graph."""
-		
-		now = datetime.datetime.now()
-		utc = datetime.datetime.utcnow()
-		delta = now.hour - utc.hour
-		
-		if now.month == 10 and delta == 2:
-			start = len(yesterday) + now.hour +1 - 8
-			end = start + self._size[0] - 1
-			visiblePrices = prices[ start : end ]
-		
-		if now.month == 3 and delta == 3:
-			start = len(yesterday) + now.hour -1 - 8
-			end = start + self._size[0] - 1
-			visiblePrices = prices[ start : end ]
-		
-		return visiblePrices
 	
 	def _AddCarets( self, lines ):
 		"""Adds carets to indicate the current hour to the sparklines."""
@@ -188,16 +184,16 @@ class Graph( _DisplayWindow ):
 		pastHours = self._pastHours
 		curHour = pastHours + 1
 		
-		start = len( yesterday ) + now.hour - pastHours
-		if start < 0:
-			prices = ( -start )*[None] + prices
-			start = 0
+		hours = len( today )
+		if hours != 24:
+			normalHour = self._AccountForDST( hours )
+		else:
+			normalHour = now.hour
 		
+		start = len( yesterday ) + normalHour - pastHours
 		end = start + self._size[0] - 1
-		visiblePrices = prices[ start : end ]
 		
-		if len(today) != 24:
-			visiblePrices = self._AccountForDST( yesterday, prices )
+		visiblePrices = prices[ start : end ]
 		
 		return visiblePrices
 	
@@ -293,11 +289,14 @@ class DetailCurrentHour( _DetailWindow ):
 		win = self._win
 		now = datetime.datetime.now()
 		
-		cur = prices[1][now.hour]
+		today = prices[1]
+		hours = len( today )
+		if hours == 24:
+			index = now.hour
+		else:
+			index = self._AccountForDST( hours )
 		
-		# take dst into account
-		if len(prices[1]) != 24:
-			cur = self._accountForDST( now.hour, prices )
+		cur = today[index]
 		
 		win.clear()
 		if cur:
@@ -320,12 +319,17 @@ class DetailNextHour( _DetailWindow ):
 		win = self._win
 		now = datetime.datetime.now()
 		
-		nextPrices = prices[1] + prices[2]
-		next = nextPrices[now.hour + 1]
+		today = prices[1]
+		tomorrow = prices[2]
 		
-		# take dst into account
-		if len(prices[1]) != 24:
-			next = self._accountForDST( now.hour + 1, prices )
+		hours = len( today )
+		if hours == 24:
+			index = now.hour + 1
+		else:
+			index = self._AccountForDST( hours ) + 1
+		
+		nextPrices = today + tomorrow
+		next = nextPrices[index]
 		
 		win.clear()
 		if next:
@@ -345,9 +349,12 @@ class DetailsToday( _DetailWindow ):
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
-		low = min( prices[1] )
-		high = max( prices[1] )
-		average = sum( prices[1] ) / len( prices[1] )
+		prices = prices[1]
+		limits = [ i for i in prices if i != None ]
+		
+		low = min( limits )
+		high = max( limits )
+		average = sum( limits ) / len( limits )
 		average = round( average, 2 )
 		
 		self._addDetail ('highest:', high )
@@ -389,9 +396,12 @@ class DetailsTomorrow( _DetailWindow ):
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
-		low = min( prices[2] )
-		high = max( prices[2] )
-		average = sum( prices[2] ) / len( prices[2] )
+		prices = prices[1] + prices[2]
+		limits = [ i for i in prices if i != None ]
+		
+		low = min( limits )
+		high = max( limits )
+		average = sum( limits ) / len( limits )
 		average = round( average, 2 )
 		
 		self._addDetail( 'highest:', high )
