@@ -38,55 +38,80 @@ class PriceData:
 		except KeyError as err:
 			raise MissingOptionError( err.args )
 		
-		self._prices = ( 24*[None], 24*[None], 24*[None] )
+		self._prices = [ 24*[None], 24*[None], 24*[None] ]
 		
 		today = datetime.datetime.today()
 		self._day = today.day
 	
-	def _FilterData( self, data ):
+	def _ConvertToPriceList(self, data):
+		if not len(data):
+			return 24*[None]
+		
+		data.sort()
+		
+		# determine DST offset from the acquired data if any
+		firstHourOffset = data[0][0].utcoffset()
+		lastHourOffset = data[-1][0].utcoffset()
+		delta = lastHourOffset - firstHourOffset
+		offset = delta.days*24 + delta.seconds/3600				# offset in hours
+		
+		prices = []
+		i = 0
+		while i < len( data ):
+			date, price = data[i]
+			
+			hourOffset = firstHourOffset - date.utcoffset()
+			hour = date.hour + hourOffset.days*24 + hourOffset.seconds/3600
+			
+			if int( hour ) == len( prices ):
+				prices.append( price )
+				i += 1
+			else:
+				prices.append( None )
+		
+		# pad with None until there's a correct number of hours
+		while len( prices ) < 24 - offset:
+			prices.append( None )
+		
+		return prices
+		
+	def _FilterDataByDay( self, data ):
 		"""Filters data based on day to price lists for yesterday, today, and tomorrow."""
 		
 		today = datetime.datetime.today()
 		tomorrow = today + datetime.timedelta( days=1 )
 		yesterday = today - datetime.timedelta( days=1 )
 		
-		priceToday = []
-		priceTomorrow = []
-		priceYesterday = []
+		# split the data to days and sort by hour
+		dataToday = []
+		dataTomorrow = []
+		dataYesterday = []
 		
 		for line in data:
-			day, price = self._ParseObject( line )
+			date, price = self._ParseObject( line )
 			
-			if day == today.day:
-				priceToday.append( price )
+			if date.day == today.day:
+				dataToday.append( (date, price) )
 			
-			if day == tomorrow.day:
-				priceTomorrow.append( price )
+			if date.day == tomorrow.day:
+				dataTomorrow.append( (date, price) )
 			
-			if day == yesterday.day:
-				priceYesterday.append( price )
+			if date.day == yesterday.day:
+				dataYesterday.append( (date, price) )
 		
-		# add placeholder values for days which have no data
-		if not priceToday:
-			priceToday = 24*[None]
-		
-		if not priceTomorrow:
-			priceTomorrow = 24*[None]
-		
-		if not priceYesterday:
-			priceYesterday = 24*[None]
-		
-		return priceYesterday, priceToday, priceTomorrow
+		return dataYesterday, dataToday, dataTomorrow
 	
 	def _ParseData( self, data ):
 		"""Parses json data to lists of prices on yesterday, today, and tomorrow."""
 		
-		priceYesterday, priceToday, priceTomorrow = self._FilterData( data )
+		dataYesterday, dataToday, dataTomorrow = self._FilterDataByDay( data )
 		
-		if len( priceYesterday ):
-			self._prices = ( priceYesterday, priceToday, priceTomorrow )
-		else:
-			self._prices = ( self._prices[0], priceToday, priceTomorrow )
+		# Convert the data to a price list
+		pricesToday = self._ConvertToPriceList( dataToday )
+		pricesTomorrow = self._ConvertToPriceList( dataTomorrow )
+		pricesYesterday = self._ConvertToPriceList( dataYesterday )
+		
+		self._prices = [ pricesYesterday, pricesToday, pricesTomorrow ]
 	
 	def _ParseObject( self, obj ):
 		"""Parses a json object to a datetime object and a two decimal price in cents."""
@@ -94,7 +119,6 @@ class PriceData:
 		try:
 			dateTime = obj[ self._dateField ]
 			date = datetime.datetime.fromisoformat( dateTime )
-			day = date.day
 			
 		except KeyError:
 			raise DataParsingError( 'No ' + self._dateField + ' in data' )
@@ -112,7 +136,7 @@ class PriceData:
 		except ValueError:
 			raise DataParsingError( 'Price is not a number' )
 		
-		return day, price
+		return date, price
 	
 	def _RequestDataHTTP( self ):
 		"""Requests data with a http get."""
@@ -166,7 +190,7 @@ class PriceData:
 		"""Updates the data at midnight. Moves todays data to yesterday and tomorrows data to today."""
 		
 		trash, yesterday, today = self._prices
-		self._prices = ( yesterday, today, 24*[None] )
+		self._prices = [ yesterday, today, 24*[None] ]
 	
 	def Update(self):
 		"""Retrieves new data from the source."""
