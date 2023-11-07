@@ -11,6 +11,12 @@ data:
         question: Data update interval?
         value: 5
     
+    availableAt:
+        description: "The time when new data is expected to be available."
+        type: string
+        question: When is data available?
+        value: "13:30"
+    
     dateField:
         description: "The field on the json data of the source, which contains an ISO formatted date."
         type: string

@@ -45,6 +45,7 @@ class App:
 		# check that all options are present
 		try:
 			freq = options['data.updateFrequency']
+			available = options['data.availableAt']
 			
 			dataOptions['dateField'] = options['data.dateField']
 			dataOptions['priceField'] = options['data.priceField']
@@ -68,6 +69,10 @@ class App:
 		
 		except KeyError as err:
 			raise MissingOptionError( err.args[0] )
+		
+		self._available = available
+		self._dataAvailable = self._availableFromTime()
+		
 		
 		self._updateFrequency = freq
 		
@@ -100,9 +105,20 @@ class App:
 		self._lastDisplayUpdate = now
 		self._lastDataUpdate = now
 	
+	def _availableFromTime(self):
+		today = datetime.datetime.today()
+		iso = today.isoformat()
+		date = iso.split('T')[0]
+		
+		availableIso = date + 'T' + self._available
+		availableTime = datetime.datetime.fromisoformat(availableIso)
+		
+		return availableTime
+	
 	def _MidnightUpdate( self, now ):
 		"""Updates the price data and display at midnight."""
 		
+		self._dataAvailable = _availableFromTime()
 		self._data.MidnightUpdate()
 		prices = self._data.GetPrices()
 		self._lastDataUpdate = now
@@ -112,12 +128,12 @@ class App:
 		
 		prices = self._data.GetPrices()
 		
-		if not len( prices[2] ):
+		if None in prices[2]:
 			self._data.Update()
 			prices = self._data.GetPrices()
 			self._lastDataUpdate = now
 			
-			if len( prices[2] ):
+			if not ( None in prices[2] ):
 				self._display.Update( prices )
 				self._lastDisplayUpdate = now
 	
@@ -140,7 +156,7 @@ class App:
 				self._MidnightUpdate( now )
 			
 			# new data will be available soon, check every five minutes
-			if 13 < now.hour:
+			if now > self._dataAvailable:
 				if now - self._lastDataUpdate > delta:
 					self._DailyDataUpdate( now )
 			
