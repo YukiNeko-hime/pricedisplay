@@ -64,6 +64,16 @@ class _Queries:
 			except:
 				raise ValueError( 'Invalid value' )
 		
+		if type == 'time':
+			try:
+				parts = value.split(':')
+				for part in parts:
+					int(part)
+			except:
+				raise ValueError( 'Invalid value' )
+			
+			return str( value )
+		
 		if type == 'string':
 			return str( value )
 		
