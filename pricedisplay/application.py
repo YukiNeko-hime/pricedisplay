@@ -71,9 +71,9 @@ class App:
 		
 		self._updateFrequency = freq
 		
-		curses.initscr()
+		stdscr = curses.initscr()
 		self._data = PriceData( dataOptions )
-		self._display = Display( displayOptions )
+		self._display = Display( displayOptions, parent=stdscr )
 	
 	def _InitCurses( self ):
 		"""Initializes the curses environment."""
@@ -157,7 +157,7 @@ class App:
 		self._running  = True
 		self._InitCurses()
 		self._InitializeDisplay()
-		curses.wrapper( self._Mainloop() )
+		self._Mainloop()
 	
 	def Stop( self ):
 		"""Stop the application."""

@@ -487,7 +487,7 @@ class Display:
 		if parent:
 			newWindow = parent.subwin
 		else:
-			newWindow = curses.newwin
+			newWindow = curses.initscr().subwin
 		
 		w, h = size
 		y, x = pos
