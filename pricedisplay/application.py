@@ -80,6 +80,14 @@ class App:
 		self._data = PriceData( dataOptions )
 		self._display = Display( displayOptions, parent=stdscr )
 	
+	def _EndCurses( self ):
+		"""Reverse terminal settings."""
+		
+		curses.echo()
+		curses.cbreak()
+		curses.curs_set(1)
+		curses.endwin()
+	
 	def _InitCurses( self ):
 		"""Initializes the curses environment."""
 		
@@ -177,7 +185,9 @@ class App:
 	
 	def Stop( self ):
 		"""Stop the application."""
+		
 		self._running = False
+		self._EndCurses()
 
 
 def _InitApp( settings ):
@@ -250,14 +260,18 @@ def _StartApp( app ):
 	except KeyboardInterrupt:
 		if _debug:
 			print( 'KeyboardInterrupt, exiting gracefully', file=sys.stderr )
+		
+		app.Stop()
 		sys.exit( _noErrors )
 	
 	except ( DataParsingError, NoDataError, DataRequestError ) as err:
 		_ShowErrorMessage( err )
+		app.Stop()
 		sys.exit( _dataError )
 	
 	except Exception as err:
 		_ShowErrorMessage( 'Unexpected error occurred' )
+		app.Stop()
 		sys.exit( _unexpectedError )
 
 def Main():
