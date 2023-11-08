@@ -360,9 +360,11 @@ class DetailsToday( _DetailWindow ):
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
-		# filter out None from the prices for comparison
-		prices = prices[1]
-		filteredPrices = [ i for i in prices if i != None ]
+		# filter out None for comparing prices
+		filteredPrices = []
+		for price in prices[1]:
+			if price != None:
+				filteredPrices.append( price )
 		
 		low = min( filteredPrices )
 		high = max( filteredPrices )
@@ -408,9 +410,11 @@ class DetailsTomorrow( _DetailWindow ):
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
-		# filter out None from the prices for comparison
-		prices = prices[1] + prices[2]
-		filteredPrices = [ i for i in prices if i != None ]
+		# filter out None for comparing prices
+		filteredPrices = []
+		for price in prices[2]:
+			if price != None:
+				filteredPrices.append( price )
 		
 		low = min( filteredPrices )
 		high = max( filteredPrices )
@@ -559,24 +563,6 @@ class Display:
 		
 		self._CreateLayout( size, pos, options, parent )
 	
-	def _CreateLayout( self, size, pos, options, parent ):
-		"""Creates the layout chosen for the window from subelements."""
-		
-		h, w = size
-		y, x = pos
-
-		self._win = win = parent.subwin( h, w, y, x )
-		layout = options['layout']
-		
-		if layout == 'vertical':
-			self._VerticalLayout( options, win )
-			
-		elif layout == 'horizontal':
-			self._HorizontalLayout( options, win )
-			
-		elif layout == 'minimal':
-			self._MinimalLayout( options, win )
-	
 	def _ChooseLayout( self, parentSize, preferred ):
 		"""Chooses the layout based on user settings and size constraints set by the parent window."""
 		
@@ -616,6 +602,24 @@ class Display:
 			size = self._minSize
 		
 		return layout, size
+	
+	def _CreateLayout( self, size, pos, options, parent ):
+		"""Creates the layout chosen for the window from subelements."""
+		
+		h, w = size
+		y, x = pos
+
+		self._win = win = parent.subwin( h, w, y, x )
+		layout = options['layout']
+		
+		if layout == 'vertical':
+			self._VerticalLayout( options, win )
+			
+		elif layout == 'horizontal':
+			self._HorizontalLayout( options, win )
+			
+		elif layout == 'minimal':
+			self._MinimalLayout( options, win )
 	
 	def _SizeConstraints( self ):	
 		"""Calculates the size constraints for the different layouts."""
