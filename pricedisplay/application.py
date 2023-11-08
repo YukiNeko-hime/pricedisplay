@@ -34,7 +34,7 @@ class MissingOptionError( Exception ):
 		Exception.__init__( self, msg )
 
 class App:
-	"""Display application."""
+	"""An application for displaying and updating price data."""
 	
 	_running = False
 	
@@ -70,15 +70,14 @@ class App:
 		except KeyError as err:
 			raise MissingOptionError( err.args[0] )
 		
-		self._available = available
-		self._dataAvailable = self._availableFromTime()
-		
-		
 		self._updateFrequency = freq
+		self._available = available
+		self._dataAvailable = self._AvailableFromTime()
 		
 		stdscr = curses.initscr()
-		self._data = PriceData( dataOptions )
 		self._display = Display( displayOptions, parent=stdscr )
+		
+		self._data = PriceData( dataOptions )
 	
 	def _EndCurses( self ):
 		"""Reverse terminal settings."""
@@ -89,7 +88,7 @@ class App:
 		curses.endwin()
 	
 	def _InitCurses( self ):
-		"""Initializes the curses environment."""
+		"""Initialize the curses environment."""
 		
 		curses.noecho()
 		curses.cbreak()
@@ -103,7 +102,7 @@ class App:
 		curses.init_pair( 4, curses.COLOR_CYAN, -1 )
 	
 	def _InitializeDisplay( self ):
-		"""Initializes the price display."""
+		"""Initialize the price display."""
 		
 		self._data.Update()
 		prices = self._data.GetPrices()
@@ -113,7 +112,9 @@ class App:
 		self._lastDisplayUpdate = now
 		self._lastDataUpdate = now
 	
-	def _availableFromTime(self):
+	def _AvailableFromTime(self):
+		"""Find the datetime after which new price data is expected to be available."""
+		
 		today = datetime.datetime.today()
 		iso = today.isoformat()
 		date = iso.split('T')[0]
@@ -126,7 +127,7 @@ class App:
 	def _MidnightUpdate( self, now ):
 		"""Updates the price data and display at midnight."""
 		
-		self._dataAvailable = _availableFromTime()
+		self._dataAvailable = _AvailableFromTime()
 		self._data.MidnightUpdate()
 		prices = self._data.GetPrices()
 		self._lastDataUpdate = now
@@ -184,7 +185,7 @@ class App:
 		self._Mainloop()
 	
 	def Stop( self ):
-		"""Stop the application."""
+		"""Stop the application and clear the curses environment."""
 		
 		self._running = False
 		self._EndCurses()
@@ -253,7 +254,7 @@ def _ShowErrorMessage( msg ):
 		print( msg, file=sys.stderr )
 
 def _StartApp( app ):
-	"""Catch errors related to starting the application."""
+	"""Catch errors related to starting and running the application."""
 	
 	try:
 		app.Start()
@@ -275,7 +276,7 @@ def _StartApp( app ):
 		sys.exit( _unexpectedError )
 
 def Main():
-	"""Parses arguments, reads the config, passes options to the application, and handles any application errors."""
+	"""Parses arguments, reads the config, passes options to the application, and handles any errors."""
 	
 	# parse commanline arguments
 	parser = argparse.ArgumentParser( prog='pricedisplay', description='A terminal display for the Finnish power price.' )
@@ -287,7 +288,7 @@ def Main():
 	_debug = args.debug
 	settingsPath = args.settings
 	
-	# Create and startthe application.
+	# create and start the application.
 	settings = _InitSettings( settingsPath )
 	app = _InitApp( settings )
 	_StartApp( app )

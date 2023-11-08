@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 
+import copy
 import datetime
 import json
 import requests
@@ -43,46 +44,52 @@ class PriceData:
 		today = datetime.datetime.today()
 		self._day = today.day
 	
-	def _ConvertToPriceList(self, data):
+	def _ConvertToPriceList( self, data ):
+		"""Convert a list of ( date, price ) tuples to a list of prices. If data is missing, fill in None."""
 		if not len(data):
 			return 24*[None]
 		
+		# make sure the data is sorted by day and hour
 		data.sort()
 		
 		# determine DST offset from the acquired data if any
 		firstHourOffset = data[0][0].utcoffset()
 		lastHourOffset = data[-1][0].utcoffset()
 		delta = lastHourOffset - firstHourOffset
-		offset = delta.days*24 + delta.seconds/3600				# offset in hours
 		
-		prices = []
+		offset = delta.days*24 + delta.seconds/3600				# offset in hours
+		hoursInDay = 24 - offset
+		hoursInDay = int( hoursInDay )
+		
+		# pad the price data with None
+		prices = hoursInDay*[None]
+		
+		# fill in the price data given as the argument
 		i = 0
 		while i < len( data ):
 			date, price = data[i]
 			
-			hourOffset = firstHourOffset - date.utcoffset()
-			hour = date.hour + hourOffset.days*24 + hourOffset.seconds/3600
+			# find out how many hours it has been after midnight for the given hour
+			offset = firstHourOffset - date.utcoffset()
+			hourOffset = offset.days*24 + offset.seconds/3600
 			
-			if int( hour ) == len( prices ):
-				prices.append( price )
-				i += 1
-			else:
-				prices.append( None )
-		
-		# pad with None until there's a correct number of hours
-		while len( prices ) < 24 - offset:
-			prices.append( None )
+			hour = date.hour + hourOffset
+			hour = int( hour )
+			
+			# fill in the price data
+			prices[hour] = price
+			i += 1
 		
 		return prices
 		
 	def _FilterDataByDay( self, data ):
-		"""Filters data based on day to price lists for yesterday, today, and tomorrow."""
+		"""Filters data based on day to ( date, price ) lists for yesterday, today, and tomorrow."""
 		
 		today = datetime.datetime.today()
 		tomorrow = today + datetime.timedelta( days=1 )
 		yesterday = today - datetime.timedelta( days=1 )
 		
-		# split the data to days and sort by hour
+		# split the data to days
 		dataToday = []
 		dataTomorrow = []
 		dataYesterday = []
@@ -182,9 +189,9 @@ class PriceData:
 			return self._LoadDataFile()
 	
 	def GetPrices( self ):
-		"""Returns the prices for yesterday, today, and tomorrow."""
+		"""Returns the prices for yesterday, today, and tomorrow. Makes a deepcopy of the internal data structure to prevent accidental overwriting of the data."""
 		
-		return self._prices
+		return copy.deepcopy( self._prices )
 	
 	def MidnightUpdate( self ):
 		"""Updates the data at midnight. Moves todays data to yesterday and tomorrows data to today."""

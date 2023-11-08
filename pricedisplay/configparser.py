@@ -33,7 +33,7 @@ class _Queries:
 		return answer
 	
 	def _OptionQuestion( self, question, type, default ):
-		"""A prompt for the user to set an option."""
+		"""A prompt for the user to set an option, with input validation for the option type."""
 		
 		answer = None
 		while answer == None:
@@ -52,17 +52,34 @@ class _Queries:
 	def _Validate( self, value, type ):
 		"""Checks that the given value is of the given type and returns the value in that type. If the type doesn't match, raises a ValueError."""
 		
-		if type == 'int':
-			try:
-				return int( value )
-			except:
-				raise ValueError( 'Invalid value' )
+		if type == 'bool':
+			if value in ( True, 'True', 'true', '1' ):
+				return True
+				
+			if value in ( False, 'False', 'false', '0' ):
+				return False
+			
+			raise ValueError( 'Invalid value' )
+		
+		if type == 'char':
+			value = str( value )
+			if len(value) == 1:
+				return value
 		
 		if type == 'float':
 			try:
 				return float( value )
 			except:
 				raise ValueError( 'Invalid value' )
+		
+		if type == 'int':
+			try:
+				return int( value )
+			except:
+				raise ValueError( 'Invalid value' )
+		
+		if type == 'string':
+			return str( value )
 		
 		if type == 'time':
 			try:
@@ -74,46 +91,24 @@ class _Queries:
 			
 			return str( value )
 		
-		if type == 'string':
-			return str( value )
-		
-		if type == 'char':
-			value = str( value )
-			if len(value) == 1:
-				return value
-		
-		if type == 'bool':
-			if value in ( True, 'True', 'true', '1' ):
-				return True
-				
-			if value in ( False, 'False', 'false', '0' ):
-				return False
-			
-			raise ValueError( 'Invalid value' )
-		
 		raise ValueError( 'Invalid type' )
 
 class Config(_Queries):
-	"""Represents a configuration loaded from a yaml file. If a path is given, tries it first, then then the default user config path. If both fail, creates a new file from a template."""
+	"""Represents a configuration loaded from a yaml file. If a path is given, tries it first, then the default user config path. If both fail, creates a new file from a template. The template path can also be given as an argument."""
 	
 	def __init__( self, path='', templatePath='' ):
 		userConfig = usersettings.appdirs.user_config_dir()
 		self._userConfigPath = os.path.join( userConfig, 'pricedisplay', __version__ )
 		self._userConfigFilePath = os.path.join( self._userConfigPath, 'config.yml' )
 		
-		if templatePath:
-			self._templatePath = templatePath
-		else:
-			# Use the default path
-			modulePath = __file__
-			packagePath = os.path.dirname( modulePath )
-			self._templatePath = os.path.join( packagePath, 'config.template' )
-			self._migrateRulesPath = os.path.join( packagePath, 'config.migrate' )
 		
-		try:
-			open( self._templatePath, 'r' ).close()
-		except OSError:
-			raise MissingTemplateError( 'Missing template: ' + self._templatePath )
+		# use the default path for the template
+		if not templatePath:
+			modulePath = __file__
+			templatePath = os.path.dirname( modulePath )
+		
+		self._templatePath = os.path.join( templatePath, 'config.template' )
+		self._migrationRulesPath = os.path.join( templatePath, 'config.migrate' )
 		
 		self._oldConfigFilePath, self._oldVersion = self._FindOldPath()
 		self._configPath = self._FindPath( path )
@@ -126,10 +121,10 @@ class Config(_Queries):
 			self.Reset()
 	
 	def _Edit( self, config ):
-		"""Prompts the user to give a value for each option in the option type. Empty string sets the default."""
+		"""Prompts the user to give a value for each option in the option type. If the option was migrated, skip it. Empty string sets the default."""
 		
 		for keyList, option in _OptionIterator( config ):
-			# if option wa migrated, don't ask to edit it
+			# if option was migrated, don't ask to edit it
 			if 'migrated' in option.keys():
 				del option['migrated']
 			else:
@@ -165,7 +160,7 @@ class Config(_Queries):
 		return ucfp
 	
 	def _FindOldPath( self ):
-		"""Finds the path of the last config file before current for migration."""
+		"""Finds the path of the last config file before the current version for settings migration."""
 		
 		userConfig = usersettings.appdirs.user_config_dir()
 		configPath = os.path.join( userConfig, 'pricedisplay' )
@@ -221,18 +216,26 @@ class Config(_Queries):
 	def CreateFromTemplate( self ):
 		"""Creates a new config file from a template, and writes it to the default config path. Gives the user an option to edit the values."""
 		
-		with open( self._templatePath, 'r' ) as file:
-			try:
-				config = yaml.safe_load( file )
-			except yaml.scanner.ScannerError:
-				raise TemplateParsingError( "Can't parse the template file: " + self._templatePath )
+		try:
+			with open( self._templatePath, 'r' ) as file:
+				try:
+					config = yaml.safe_load( file )
+				except yaml.scanner.ScannerError:
+					raise TemplateParsingError( "Can't parse the template file: " + self._templatePath )
+			
+		except OSError:
+			raise MissingTemplateError( 'Missing template: ' + self._templatePath )
 		
-		question = 'Do you want to edit the configuration file?'
 		if self._oldConfigFilePath:
 			migrate = self._YesNo( 'Do you want to migrate the old configuration file (version ' + self._oldVersion + ')?' )
-			if migrate:
-				self.Migrate( config )
-				question = 'Do you want to edit the new options?'
+		else:
+			migrate = False
+		
+		if migrate:
+			self.Migrate( config )
+			question = 'Do you want to edit the new options?'
+		else:
+			question = 'Do you want to edit the configuration file?'
 		
 		edit = self._YesNo( question )
 		if edit:
@@ -248,7 +251,7 @@ class Config(_Queries):
 		
 		rulebook = { 'renamed': {} }
 		try:
-			rules = self._LoadFile( self._migrateRulesPath )
+			rules = self._LoadFile( self._migrationRulesPath )
 			rulebook.update( rules )
 		except OSError:
 			print( 'No migration rules found, continuing without.' )
@@ -265,25 +268,25 @@ class Config(_Queries):
 				for key in keys:
 					item = item[key]
 			
-			# No such option in the new config file, skip it.
+			# no such option in the new config file, skip it.
 			except KeyError:
 				pass
 			
-			# if the option type matches, overwrite the default in template
+			# if the option type matches, overwrite the default in the template
 			if item['type'] == option['type']:
 				item['value'] = option['value']
 				item['migrated'] = True
 	
 	def Reset( self ):
-		"""Asks the user to resets the current cpnfiguration file, with an option for editing the values. If the user declines, raises a ConfigParsingError."""
+		"""Asks the user whether to reset the current configuration file, with an option for editing the values. If the user declines, raises a ConfigParsingError."""
 		
-		reset = self._YesNo('Do you want to reset the config?')
+		reset = self._YesNo('Do you want to reset the configuration file?')
 		if reset:
 			self.CreateFromTemplate()
 			try:
 				self.options = self._Parse()
 			except ConfigParsingError as err:
-				# The template is corrupted
+				# the template is corrupted and can't be used
 				raise CorruptedTemplateError( 'The template file is corrupted: ' + self._templatePath )
 		else:
 			raise ConfigParsingError( "Can't parse the configuration file: " + self._configPath )
@@ -303,7 +306,7 @@ class _OptionIterator:
 		keys = self._keys
 		indices = self._indices
 		
-		# Move to the next index in the index chain
+		# move to the next index in the index chain
 		indices[-1] += 1
 		while not indices[-1] < len( keys[-1] ):
 			indices.pop()
@@ -316,7 +319,7 @@ class _OptionIterator:
 		
 		item = self._UseKeys( keys, indices )
 		while not self._IsOption( item ):
-			# The item is not an option or dictionary, move to next one
+			# the item is not an option or dictionary, move to next one
 			if type(item) != dict:
 				return self.__next__()
 			
@@ -344,6 +347,8 @@ class _OptionIterator:
 			return False
 	
 	def _MapKeys( self, keys, indices ):
+		"""Map keys of nested dictionaries based on a list of indices. Return a list of keys corresponding to those given by the indices."""
+		
 		keyList = []
 		
 		for i in range( len(keys) ):
@@ -355,7 +360,7 @@ class _OptionIterator:
 		return keyList
 	
 	def _UseKeys( self, keys, indices ):
-		"""Uses a list of keys to find the current dictionary in a multi-level config dictionary."""
+		"""Uses a list of keys to find the current item in a nested config dictionary."""
 		
 		item = self._config
 		keyList = self._MapKeys( keys, indices )
