@@ -7,7 +7,7 @@ import requests
 
 from requests.exceptions import *
 
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 
 class NoDataError(Exception):
 	pass

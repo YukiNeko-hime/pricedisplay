@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pricedisplay"
-version = "0.2.5"
+version = "0.2.6"
 description = ""
 authors = ["Lumi"]
 

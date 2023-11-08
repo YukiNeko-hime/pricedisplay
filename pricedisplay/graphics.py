@@ -5,7 +5,7 @@ import datetime
 import sparklines
 import warnings
 
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 
 class MissingOptionError( Exception ):
 	def __init__( self, option ):
