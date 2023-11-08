@@ -29,11 +29,11 @@ class WindowPositionError( Exception ):
 		Exception.__init__(self, msg)
 
 class _DisplayWindow:
-	_minSize = (0,0)
+	_minSize = ( 0,0 )
 	
 	def __init__( self, size, pos, options, parent=None ):
 		y, x = pos
-		w, h = size
+		h, w = size
 		self._boundingBox = ((y, x), (y + h, x + w))
 		self._low, self._high = options['limits']
 		self._size = size		
@@ -92,10 +92,10 @@ class _DisplayWindow:
 class Graph( _DisplayWindow ):
 	"""Displays a simple sparkline graph of the power price, color coded based on the limits given in options. The size of the graph, carets used to mark the current hour, and the number of past hours to show can be given as options."""
 	
-	minSize = (37, 12)
+	minSize = ( 12, 37 )
 	_defaultOptions = {
-		'width': minSize[0],
-		'height': minSize[1],
+		'height': minSize[0],
+		'width': minSize[1],
 		'carets': [ '▼', '▲' ],
 		'pastHours': 8
 	}
@@ -117,7 +117,7 @@ class Graph( _DisplayWindow ):
 		
 		self._pastHours = pastHours
 		
-		size = ( opts['width'], opts['height'] )
+		size = ( opts['height'], opts['width'] )
 		_DisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _AddCarets( self, lines ):
@@ -192,7 +192,7 @@ class Graph( _DisplayWindow ):
 		
 		minimum = min( filteredPrices )
 		maximum = max( filteredPrices )
-		numLines = self._size[1] - 2		# Leave room for the carets
+		numLines = self._size[0] - 2		# Leave room for the carets
 		hours = len( visiblePrices )
 		
 		# don't warn about negative values
@@ -219,7 +219,7 @@ class Graph( _DisplayWindow ):
 			index = now.hour
 		
 		start = len( yesterday ) + index - pastHours
-		end = start + self._size[0] - 1
+		end = start + self._size[1] - 1
 		
 		visiblePrices = prices[ start : end ]
 		
@@ -289,7 +289,7 @@ class _DetailWindow( _DisplayWindow ):
 class DetailCurrentHour( _DetailWindow ):
 	"""Displays the price for the current hour."""
 	
-	minSize = (17,1)
+	minSize = ( 1, 17 )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -319,7 +319,7 @@ class DetailCurrentHour( _DetailWindow ):
 class DetailNextHour( _DetailWindow ):
 	"""Displays the price for the current hour."""
 	
-	minSize = (17,1)
+	minSize = ( 1, 17 )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -352,7 +352,7 @@ class DetailNextHour( _DetailWindow ):
 class DetailsToday( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for today."""
 	
-	minSize = (17,5)
+	minSize = ( 5, 17 )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -400,7 +400,7 @@ class DetailsToday( _DetailWindow ):
 class DetailsTomorrow( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for tomorrow."""
 	
-	minSize = (17,5)
+	minSize = ( 5, 17 )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -446,13 +446,13 @@ class DetailsTomorrow( _DetailWindow ):
 class HorizontalDetails:
 	"""Displays a horzontal block of price details for today and tomorrow."""
 	
-	minSize = ( 37, 7 )
+	minSize = ( 7, 37 )
 	_padding = ( 1, 3 )
 	_subs = None
 	
 	def __init__( self, pos, options, parent ):
 		y, x = pos
-		w, h = self.minSize
+		h, w = self.minSize
 		self._boundingBox = ((y, x), (y + h, x + w))
 		
 		self._subs = []
@@ -490,13 +490,13 @@ class HorizontalDetails:
 class VerticalDetails:
 	"""Displays a vertical block of price details for today and tomorrow."""
 	
-	minSize = ( 17, 14 )
+	minSize = ( 14, 17 )
 	_padding = ( 1, 3 )
 	_subs = None
 	
 	def __init__( self, pos, options, parent ):
 		y, x = pos
-		w, h = self.minSize
+		h, w = self.minSize
 		self._boundingBox = ((y, x), (y + h, x + w))
 		
 		self._subs = []
@@ -531,14 +531,14 @@ class VerticalDetails:
 class Display:
 	"""Displays a sparkline graph of the price data with details of the prices."""
 	
-	_minSize = ( 43, 14 )
+	_minSize = ( 14, 43 )
 	_padding = ( 1, 3 )
 	_subs = None
 	
 	def __init__( self, options, pos=( 0,0 ), parent=None ):
 		self._subs = []
 		y, x = pos
-		w, h =self._minSize
+		h, w =self._minSize
 		
 		# find the available space
 		if not parent:
@@ -562,7 +562,7 @@ class Display:
 	def _CreateLayout( self, size, pos, options, parent ):
 		"""Creates the layout chosen for the window from subelements."""
 		
-		w, h = size
+		h, w = size
 		y, x = pos
 
 		self._win = win = parent.subwin( h, w, y, x )
@@ -583,10 +583,10 @@ class Display:
 		ph, pw = parentSize
 		
 		constraints = self._SizeConstraints()
-		( wMin, wMax ), ( hMin, hMax ) = constraints
+		( hMin, hMax ), ( wMin, wMax ) = constraints
 		
-		horizontalSize = ( wMax, hMin )
-		verticalSize = ( wMin, hMax )
+		horizontalSize = ( hMin, wMax )
+		verticalSize = ( hMax, wMin )
 		
 		canUseVertical = ( hMax <= ph ) and ( wMin <= pw )
 		canUseHorizontal = ( hMin <= ph ) and ( wMax <= pw )
@@ -624,32 +624,32 @@ class Display:
 		
 		
 		# minimal horizontal size is the width of the horizontal details plus padding
-		minHorizontal = padX   + HorizontalDetails.minSize[0] +   padX
+		minHorizontal = padX   + HorizontalDetails.minSize[1] +   padX
 		
 		
 		# maximal horizontal size is the width of the graph, the width of the vertical details and padding
-		maxHorizontal = padX   + Graph.minSize[0] +   padX    + VerticalDetails.minSize[0] +   padX
+		maxHorizontal = padX   + Graph.minSize[1] +   padX    + VerticalDetails.minSize[1] +   padX
 		
 		
 		# minimal vertical size is the height of the vertical details plus padding and an extra line for the lower graph caret
 		minVertical = padY \
-				+ VerticalDetails.minSize[1] \
+				+ VerticalDetails.minSize[0] \
 				+ padY \
 				+ padY						# leave space for the lower graph caret line
 		
 		
 		# maximal vertical size is is the height of the graph, the height of the horizontal details and padding
 		maxVertical = padY \
-				+ Graph.minSize[1] \
+				+ Graph.minSize[0] \
 				+ padY \
-				+ HorizontalDetails.minSize[1] \
+				+ HorizontalDetails.minSize[0] \
 				+ padY
 		
 		
 		horizontal = ( minHorizontal, maxHorizontal )
 		vertical = ( minVertical, maxVertical )
 		
-		constraint =  ( horizontal, vertical )
+		constraint =  ( vertical, horizontal )
 		
 		return constraint
 	
@@ -657,7 +657,7 @@ class Display:
 		"""Displays the graph and price details in a horizontal layout."""
 		
 		padY, padX = self._padding
-		options['height'] = VerticalDetails.minSize[1] + 1		# leave extra line for the lower graph caret
+		options['height'] = VerticalDetails.minSize[0] + 1		# leave extra line for the lower graph caret
 		
 		elems = [ Graph, VerticalDetails ]
 		if options['reverse']:
@@ -683,7 +683,7 @@ class Display:
 		"""Displays the graph and price details in a vertical layout."""
 		
 		padY, padX = self._padding
-		options['width'] = HorizontalDetails.minSize[0]
+		options['width'] = HorizontalDetails.minSize[1]
 		
 		elems = [ Graph, HorizontalDetails ]
 		if options['reverse']:
