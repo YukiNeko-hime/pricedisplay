@@ -15,7 +15,7 @@ from .configparser import ConfigParsingError, CorruptedTemplateError, MissingTem
 from .datahandler import DataParsingError, NoDataError, DataRequestError
 from .graphics import WindowSizeError
 
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 
 _debug = 0
 
