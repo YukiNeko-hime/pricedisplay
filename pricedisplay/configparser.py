@@ -242,7 +242,24 @@ class Config(_Queries):
 			self._Edit( config )
 		
 		with open( self._userConfigFilePath, 'w' ) as file:
-			yaml.safe_dump( config, file )
+			written = []
+			for key, option in _OptionIterator( config ):
+				keys = key.split('.')
+				indent = ''
+				i = 0
+				while i < len(keys):
+					curKey = '.'.join( keys[:i+1] )
+					if not curKey in written:
+						file.write( indent + keys[i] + ':\n' )
+						written.append(curKey)
+					
+					indent += '    '
+					i += 1
+				
+				dump = yaml.safe_dump( option )
+				lines = dump.split('\n')
+				for line in lines:
+					file.write( indent + line + '\n' )
 		
 		self._config = config
 	
