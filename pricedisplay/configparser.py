@@ -4,7 +4,7 @@ import os
 import usersettings
 import yaml
 
-__version__ = '0.2.6'
+__version__ = '0.3.0'
 
 class ConfigParsingError( Exception ):
 	pass
