@@ -5,22 +5,22 @@ Terminal Display for the Finnish Power Price
 
 ## Building
 
-You can build the package with Poetry:
+You can install the dependencies and build the package with Poetry:
+
+`poetry install`
 
 `poetry build`
 
 You can test the build with:
-
-`poetry install`
 
 `poetry run python -m pricedisplay`
 
 
 ## Installing
 
-Install the package from the wheel in dist run:
+Install the package from PyPI:
 
-`python -m pip install pricedisplay-0.2.0-py3-none-any.whl`
+`python -m pip install pricedisplay`
 
 Currently you need Python 3.9 or greater.
 
