@@ -4,7 +4,7 @@ import os
 import usersettings
 import yaml
 
-__version__ = '0.3.1'
+__version__ = '0.3.3'
 
 class ConfigParsingError( Exception ):
 	pass
@@ -120,20 +120,30 @@ class Config(_Queries):
 			print(err)
 			self.Reset()
 	
+	def _AskForOption( self, option ):
+		question = option['question']
+		type = option['type']
+		default = option['value']
+		
+		value = self._OptionQuestion( question, type, default )
+		option['value'] = value
+
+	
 	def _Edit( self, config ):
 		"""Prompts the user to give a value for each option in the option type. If the option was migrated, skip it. Empty string sets the default."""
 		
+		essentialOnly = self._YesNo('Only edit essential options?')
 		for keyList, option in _OptionIterator( config ):
 			# if option was migrated, don't ask to edit it
 			if 'migrated' in option.keys():
 				del option['migrated']
-			else:
-				question = option['question']
-				type = option['type']
-				default = option['value']
-				
-				value = self._OptionQuestion( question, type, default )
-				option['value'] = value
+			
+			elif 'essential' in option.keys():
+				del option['essential']
+				self._AskForOption( option )
+			
+			elif not essentialOnly:
+				self._AskForOption( option )
 	
 	def _FindPath( self, path ):
 		"""Finds the path to the config file. Tries first the file supplied as an argument, then the default config path. If no file is found, creates one from template."""

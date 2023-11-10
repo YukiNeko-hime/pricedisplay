@@ -38,12 +38,14 @@ data:
 layout:
     preferred:
         description: "Choose the preferred layout from: none, minimal, horizontal, vertical."
+        essential: true
         type: string
-        question: Preferred layout?
+        question: Preferred layout (horizontal, vertical, minimal)?
         value: none
     
     reverse:
         description: "Reverses the order of the graph and the text block."
+        essential: true
         type: bool
         question: Reverse layout?
         value: false
@@ -51,6 +53,7 @@ layout:
 caret:
     past_hours:
         description: "The number of past hours visible in the graph. Negative number parses to zero. If the number of hours would exceed the width of the display, shows as many as can be fitted."
+        essential: true
         type: int
         question: Past hours to show?
         value: 8
@@ -71,12 +74,14 @@ caret:
 price:
     high:
         description: "Price above this value is considered low."
+        essential: true
         type: float
         question: High price limit?
         value: 10.0
     
     low:
         description: "Price below this value is considered low."
+        essential: true
         type: float
         question: Low price limit?
         value: 5.0
