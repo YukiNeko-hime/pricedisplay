@@ -112,9 +112,9 @@ class Config(_Queries):
 		
 		self._oldConfigFilePath, self._oldVersion = self._FindOldPath()
 		self._configPath = self._FindPath( path )
-		self._config = self._LoadFile( self._configPath )
 		
 		try:
+			self._config = self._LoadFile( self._configPath )
 			self.options = self._Parse()
 		except ConfigParsingError as err:
 			print(err)
