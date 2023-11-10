@@ -15,7 +15,7 @@ from .configparser import ConfigParsingError, CorruptedTemplateError, MissingTem
 from .datahandler import DataParsingError, NoDataError, DataRequestError
 from .graphics import WindowSizeError
 
-__version__ = '0.3.0'
+__version__ = '0.3.3'
 
 _debug = 0
 
@@ -281,16 +281,22 @@ def Main():
 	# parse commanline arguments
 	parser = argparse.ArgumentParser( prog='pricedisplay', description='A terminal display for the Finnish power price.' )
 	parser.add_argument( '--debug', action='store_true', help='set debugging mode', required=False )
+	parser.add_argument( '--reset', action='store_true', help='reset the settings', required=False )
 	parser.add_argument( '--settings', default='', help='path to a settings file', metavar='PATH', required=False )
 	args = parser.parse_args()
 	
 	global _debug
 	_debug = args.debug
 	settingsPath = args.settings
+	resetSettings = args.reset
 	
 	# create and start the application.
 	settings = _InitSettings( settingsPath )
-	app = _InitApp( settings )
+	if resetSettings:
+		app = _ResetSettings(settings)
+	else:
+		app = _InitApp( settings )
+	
 	_StartApp( app )
 
 if __name__ == '__main__':
