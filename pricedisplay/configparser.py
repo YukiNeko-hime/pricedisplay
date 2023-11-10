@@ -165,15 +165,19 @@ class Config(_Queries):
 		userConfig = usersettings.appdirs.user_config_dir()
 		configPath = os.path.join( userConfig, 'pricedisplay' )
 		
+		# find all the config files in the config directory
 		gen = os.walk( configPath )
-		versions = next( gen )[1]
+		try:
+			versions = next( gen )[1]
+		except StopIteration:
+			versions = []
 		
 		# don't consider the current version, if it exists
-		if versions[-1] == __version__:
+		if len( versions ) and versions[-1] == __version__:
 			versions.pop()
 		
 		# if old versions exist, pick the latest
-		if len(versions):
+		if len( versions ):
 			oldVersion = versions[-1]
 			oldConfigFilePath = os.path.join( configPath, oldVersion, 'config.yml' )
 			
@@ -185,6 +189,7 @@ class Config(_Queries):
 			
 		else:
 			oldConfigFilePath = None
+			oldVersion = None
 		
 		return oldConfigFilePath, oldVersion
 	
