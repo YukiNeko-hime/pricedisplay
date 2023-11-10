@@ -105,48 +105,129 @@ class Graph( _DisplayWindow ):
 	def _AddCarets( self, lines ):
 		"""Adds carets to indicate the current hour in the sparklines."""
 		
+		pos, neg = lines
 		carets = self._carets
 		pastHours = self._pastHours
 		curHour = pastHours + 1
-		hours = len(lines[0])
+		hours = len( ( pos + neg )[0] )
 		
-		# add an empty line to always fit the upper caret
-		lines = [ ' '*hours ] + lines
+		# add an empty line to beginning and end to always fit the carets
+		# if there are no lines, include the caret on the line
+		if pos:
+			pos = [ ' '*hours ] + pos
+			pos = self._AddUpperCaret( pos )
+		else:
+			pos = [ ' '*pastHours + carets[0] + ' '*(hours - curHour) ]
 		
-		# find the lowest possible position for the caret, searching from top down
-		for height in range( len(lines) - 1 ):
-			line = lines[height]
-			next = lines[height + 1]
+		if neg:
+			neg = neg + [ ' '*hours ]
+			neg = self._AddLowerCaret( neg )
+		else:
+			neg = [ ' '*pastHours + carets[1] + ' '*(hours - curHour) ]
+		
+		return pos, neg
+	
+	def _AddLowerCaret( self, lines ):
+		"""Add the lower caret to the given lines."""
+		
+		carets = self._carets
+		pastHours = self._pastHours
+		curHour = pastHours + 1
+		
+		# find the highest possible position for the upper caret, searching from bottom up
+		i = len( lines ) - 2
+		while i > 0:
+			prev = lines[i + 1]
+			line = lines[i]
+			next = lines[i - 1]
 			
-			# last empty space above the sparkline on current hour
-			if line[ pastHours ] == ' ' and next[ pastHours ] != ' ':
-				# insert the caret preserving the line around it
-				upperCaretLine = line[ : pastHours ] + carets[0] + line[ curHour : ]
-				lines[height] = upperCaretLine
+			# first empty space under negative sparkline on current hour
+			if prev[ pastHours ] != ' ' and next[ pastHours ] == ' ':
+				lowerCaretLine = prev[ : pastHours ] + carets[1] + prev[ curHour : ]
+				lines[i + 1] = lowerCaretLine
 				break
-		
-		# add the line with the lower caret at the end
-		lowerCaretLine = ' '*pastHours + carets[1] + ' '*( hours - curHour )
-		lines.append( lowerCaretLine )
+			
+			# last possible line for the lower caret, if price is positive
+			# the character is empty, because the value for the price is None
+			if i == 1 and next[ pastHours ] == ' ':
+				lowerCaretLine = next[ : pastHours ] + carets[1] + next[ curHour : ]
+				lines[0] = lowerCaretLine
+			
+			i -= 1
 		
 		return lines
+	
+	def _AddUpperCaret( self, lines ):
+		"""Add the upper caret to the given lines."""
 		
-	def _AddLines( self, lines, colors ):
+		carets = self._carets
+		pastHours = self._pastHours
+		curHour = pastHours + 1
+		
+		# find the lowest possible position for the upper caret, searching from top down
+		i = 0
+		while i < len( lines ) - 1:
+			line = lines[i]
+			next = lines[i + 1]
+			
+			# last empty space for the upper caret, if price is positive
+			if line[ pastHours ] == ' ' and next[ pastHours ] != ' ':
+				upperCaretLine = line[ : pastHours ] + carets[0] + line[ curHour : ]
+				lines[i] = upperCaretLine
+				break
+			
+			# last possible line for the upper caret, if price is negative
+			if i == len( lines ) - 2 and next[ pastHours ] == ' ':
+				upperCaretLine = next[ : pastHours ] + carets[0] + next[ curHour : ]
+				lines[-1] = upperCaretLine
+			
+			i += 1
+		
+		return lines
+	
+	def _AddLines( self, lines, colors, prices ):
 		"""Adds the sparklines and the lower caret line."""
 		
 		win = self._win
+		pos, neg = lines
 		
-		for line in lines[ : -1 ]:
+		# add the upper caret line
+		win.addstr( pos[0] )
+		win.addstr( '\n' )
+		
+		self._AddPositiveLines( pos, colors, prices )
+		self._AddNegativeLines( neg, colors, prices )
+		
+		# add the lower caret line
+		win.addstr( neg[-1] )
+	
+	def _AddNegativeLines( self, lines, colors, prices ):
+		"""Adds negative lines to the graph."""
+		
+		win = self._win
+		
+		for line in lines[:-1]:
 			for hour in range( len(line) ):
-				if not line[hour] == self._carets[0]:
+				if not line[hour] in self._carets and prices[hour] < 0:
+					win.addstr(line[hour], colors[hour] | curses.A_REVERSE)
+				else:
+					win.addstr(line[hour])
+			
+			win.addstr( '\n' )
+	
+	def _AddPositiveLines( self, lines, colors, prices ):
+		"""Adds positive lines to the graph."""
+		
+		win = self._win
+		
+		for line in lines[1:]:
+			for hour in range( len(line) ):
+				if not line[hour] in self._carets:
 					win.addstr(line[hour], colors[hour])
 				else:
 					win.addstr(line[hour])
 			
 			win.addstr( '\n' )
-		
-		# add the lower caret line without line ending
-		win.addstr(lines[-1], curses.A_BOLD)
 	
 	def _GetColors( self, visiblePrices ):
 		"""Gets the colors for the visible price data based on high and low prices."""
@@ -156,12 +237,13 @@ class Graph( _DisplayWindow ):
 		for hour in range( hours ):
 			price = visiblePrices[ hour ]
 			color = self._PriceToColor( price )
+			
 			colors.append( color )
 		
 		return colors
 	
-	def _GetSparklines( self, visiblePrices ):
-		"""Gets the sparklines for visible prices."""
+	def _GetLimits( self, visiblePrices ):
+		"""Find the minimum and maximum for the visible prices."""
 		
 		# filter out None for comparing prices
 		filteredPrices = []
@@ -169,20 +251,107 @@ class Graph( _DisplayWindow ):
 			if price != None:
 				filteredPrices.append( price )
 		
-		# add zero to for better visualization of prices
+		# add zero for better visualization of prices
 		filteredPrices += [0]
 		
 		minimum = min( filteredPrices )
 		maximum = max( filteredPrices )
+		
+		return minimum, maximum
+	
+	def _GetScaledLineParameters( self, limits ):
+		"""Find the scaled parameters, when there are both positive and negative prices."""
+		
 		numLines = self._size[0] - 2		# Leave room for the carets
-		hours = len( visiblePrices )
+		minimum, maximum = limits
 		
-		# don't warn about negative values
-		with warnings.catch_warnings():
-			warnings.simplefilter( 'ignore' )
-			lines = sparklines.sparklines( visiblePrices, num_lines=numLines, minimum=minimum, maximum=maximum )
+		ratio = maximum / ( maximum - minimum )
+		numPosLines = round( ratio*numLines )
+		numNegLines = numLines - numPosLines
 		
-		return lines
+		if numPosLines == 0:
+			numPosLines = 1
+			numNegLines = numLines - 1
+		
+		if numNegLines == 0:
+			numPosLines = numLines - 1
+			numNegLines = 1
+		
+		if maximum < abs( minimum ):
+			posMaximum = - minimum * ( numPosLines / numNegLines )
+			negMaximum = - minimum
+		else:
+			posMaximum = maximum
+			negMaximum = maximum * ( numNegLines / numPosLines )
+		
+		posParams = numPosLines, posMaximum
+		negParams = numNegLines, negMaximum
+		
+		return posParams, negParams
+	
+	def _GetLineParameters( self, hasPrices, limits ):
+		"""Find the parameters for drawing the sparklines."""
+		
+		numLines = self._size[0] - 2		# Leave room for the carets
+		minimum, maximum = limits
+		hasPos, hasNeg = hasPrices
+		
+		if hasPos and hasNeg:
+			posParams, negParams = self._GetScaledLineParameters( limits )
+		elif hasNeg:
+			posParams = ( 0,0 )
+			negParams = numLines, -minimum
+		
+		else:
+			posParams = ( numLines, maximum)
+			negParams = ( 0,0 )
+		
+		return posParams, negParams
+	
+	def _GetNegativeSparklines( self, prices, numLines, maximum ):
+		"""Get sparklines for negative prices."""
+		
+		# normalize negative prices to positive values
+		normPrices = []
+		for price in prices:
+			if price != None:
+				normPrices.append( price + maximum )
+			else:
+				normPrices.append( None )
+		
+		if numLines:
+			sparks = sparklines.sparklines( normPrices, num_lines=numLines, minimum=0, maximum=maximum )
+		else:
+			sparks = []
+		
+		return sparks
+	
+	def _GetPositiveSparklines( self, prices, numLines, maximum ):
+		"""Get sparklines for positive prices."""
+		
+		if numLines:
+			sparks = sparklines.sparklines( prices, num_lines=numLines, minimum=0, maximum=maximum )
+		else:
+			sparks = []
+		
+		return sparks
+		
+	def _GetSparklines( self, visiblePrices ):
+		"""Gets the sparklines for visible prices."""
+		
+		limits = self._GetLimits( visiblePrices )
+		posPrices, negPrices = self._SplitPrices( visiblePrices )
+		
+		hasPos = any( price is not None for price in posPrices )
+		hasNeg = any( price is not None for price in negPrices )
+		hasPrices = hasPos, hasNeg
+		
+		posParams, negParams = self._GetLineParameters( hasPrices, limits )
+		
+		posSparks = self._GetPositiveSparklines( posPrices, *posParams )
+		negSparks = self._GetNegativeSparklines( negPrices, *negParams )
+		
+		return posSparks, negSparks
 	
 	def _GetVisiblePrices( self, priceData ):
 		"""Gets the prices, which are visible taking into account dst and the number of past hours to show. Returns a list of the visible prices."""
@@ -207,6 +376,27 @@ class Graph( _DisplayWindow ):
 		
 		return visiblePrices
 	
+	def _SplitPrices( self, visiblePrices ):
+		"""Splits the prices to positive and negative lists, filling in None for missing values."""
+		
+		# split out positive prices
+		posPrices = []
+		for price in visiblePrices:
+			if price != None and price >= 0:
+				posPrices.append( price )
+			else:
+				posPrices.append( None )
+		
+		# split out negative prices
+		negPrices = []
+		for price in visiblePrices:
+			if price != None and price < 0:
+				negPrices.append( price )
+			else:
+				negPrices.append( None )
+		
+		return posPrices, negPrices
+	
 	def Update( self, priceData ):
 		"""Updates the graph, taking into account the changes in dst."""
 		
@@ -217,7 +407,7 @@ class Graph( _DisplayWindow ):
 		colors = self._GetColors( visiblePrices )
 		
 		win.clear()
-		self._AddLines( lines, colors )
+		self._AddLines( lines, colors, visiblePrices )
 		win.refresh()
 
 class _DetailWindow( _DisplayWindow ):
