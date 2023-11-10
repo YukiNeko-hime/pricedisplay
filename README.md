@@ -24,6 +24,8 @@ Install the package from PyPI:
 
 Currently you need Python 3.9 or greater.
 
+**NOTE:** On macOS you may get a warning from urllib3. The default installation of Python includes OpenSSL version compiled with LibreSSL, which is no longer supported. You can fix this by installing Python with Homebrew. For details see [this issue](https://github.com/urllib3/urllib3/issues/3020).
+
 
 ## Usage
 
