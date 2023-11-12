@@ -4,19 +4,10 @@ import os
 import usersettings
 import yaml
 
-__version__ = '0.3.3'
+from .exceptions import ConfigParsingError
+from .exceptions import CorruptedTemplateError, MissingTemplateError, TemplateParsingError
 
-class ConfigParsingError( Exception ):
-	pass
-
-class CorruptedTemplateError( Exception ):
-	pass
-
-class MissingTemplateError( Exception ):
-	pass
-
-class TemplateParsingError( Exception ):
-	pass
+__version__ = '0.3.4'
 
 class _Queries:
 	def _YesNo( self, question ):

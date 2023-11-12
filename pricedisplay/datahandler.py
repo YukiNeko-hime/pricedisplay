@@ -6,24 +6,10 @@ import json
 import requests
 
 from requests.exceptions import *
+from .exceptions import MissingOptionError
+from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.3.0'
-
-class NoDataError(Exception):
-	pass
-
-class DataParsingError(Exception):
-	pass
-
-class DataRequestError(Exception):
-	pass
-
-class MissingOptionError( Exception ):
-	def __init__( self, option ):
-		self.option = option
-		msg = 'Missing option: ' + option
-		
-		Exception.__init__( self, msg )
+__version__ = '0.3.4'
 
 class PriceData:
 	"""Retrieves, parses and updates the price data from the specified source."""

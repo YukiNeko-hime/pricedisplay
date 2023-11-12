@@ -5,28 +5,10 @@ import datetime
 import sparklines
 import warnings
 
-__version__ = '0.3.0'
+from .exceptions import MissingOptionError
+from .exceptions import WindowSizeError, WindowPositionError
 
-class MissingOptionError( Exception ):
-	def __init__( self, option ):
-		self.option = option
-		msg = 'Missing option: ' + option
-		
-		Exception.__init__( self, msg )
-
-class WindowSizeError( Exception ):
-	def __init__( self, width, height ):
-		self.height = height
-		self.width = width
-		msg = 'Parent window is too small, display requires at least ' + str(height) + ' lines and ' + str(width) + ' cols'
-		Exception.__init__(self, msg)
-
-class WindowPositionError( Exception ):
-	def __init__( self, y, x ):
-		self.y = y
-		self.x = x
-		msg = 'Display overflows the parent window, when positioned at ' + str(y) + ', ' + str(x)
-		Exception.__init__(self, msg)
+__version__ = '0.3.4'
 
 class _DisplayWindow:
 	_minSize = ( 0,0 )

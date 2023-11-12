@@ -11,11 +11,9 @@ from .configparser import Config
 from .datahandler import PriceData
 from .graphics import Display
 
-from .configparser import ConfigParsingError, CorruptedTemplateError, MissingTemplateError, TemplateParsingError
-from .datahandler import DataParsingError, NoDataError, DataRequestError
-from .graphics import WindowSizeError
+from .exceptions import *
 
-__version__ = '0.3.3'
+__version__ = '0.3.4'
 
 _debug = 0
 
@@ -24,14 +22,6 @@ _unexpectedError = 1
 _configError = 2
 _displayError = 3
 _dataError = 4
-
-
-class MissingOptionError( Exception ):
-	def __init__( self, option ):
-		self.option = option
-		msg = 'Missing option: ' + option
-		
-		Exception.__init__( self, msg )
 
 class App:
 	"""An application for displaying and updating price data."""
