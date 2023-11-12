@@ -8,7 +8,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import WindowSizeError, WindowPositionError
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 
 class _DisplayWindow:
 	_minSize = ( 0,0 )
@@ -619,108 +619,28 @@ class DetailsTomorrow( _DetailWindow ):
 		
 		win.refresh()
 
-class HorizontalDetails:
-	"""Displays a horzontal block of price details for today and tomorrow."""
+class _Collection:
+	"""A collection of subwindows for structuring a display."""
 	
-	minSize = ( 7, 37 )
-	_padding = ( 1, 3 )
+	minSize = ( 0,0 )
+	_padding = ( 0,0 )
 	_subs = None
 	
-	def __init__( self, pos, options, parent ):
-		y, x = pos
-		h, w = self.minSize
+	def __init__( self, pos, size=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
+		y, x = self._pos = pos
+		h, w = size
+		
 		self._boundingBox = ((y, x), (y + h, x + w))
-		
+		self._options = options
+		self._padding = padding
+		self._parent = parent
 		self._subs = []
-		padY, padX = self._padding
-		
-		# add the elements from left to right and top to bottom in a two by two grid
-		current = DetailCurrentHour( pos, options, parent )
-		self._subs.append(current)
-		
-		topLeft, bottomRight = current.GetBoundingBox()
-		
-		pos = ( y, padX + bottomRight[1] )
-		next = DetailNextHour( pos, options, parent )
-		self._subs.append(next)
-		
-		pos = ( padY + bottomRight[0], x )
-		today = DetailsToday( pos, options, parent )
-		self._subs.append(today)
-		
-		pos = ( padY + bottomRight[0], padX + bottomRight[1] )
-		tomorrow = DetailsTomorrow( pos, options, parent )
-		self._subs.append(tomorrow)
-	
-	def GetBoundingBox( self ):
-		"""Returns the bounding bow for the dispay window."""
-		
-		return self._boundingBox
-	
-	def Update( self, prices ):
-		"""Updates the display."""
-		
-		for sub in self._subs:
-			sub.Update( prices )
-
-class VerticalDetails:
-	"""Displays a vertical block of price details for today and tomorrow."""
-	
-	minSize = ( 14, 17 )
-	_padding = ( 1, 3 )
-	_subs = None
-	
-	def __init__( self, pos, options, parent ):
-		y, x = pos
-		h, w = self.minSize
-		self._boundingBox = ((y, x), (y + h, x + w))
-		
-		self._subs = []
-		padY, padX = self._padding
-		
-		# add all the elements from top down in one column
-		elems = [
-			( DetailCurrentHour, 0 ),
-			( DetailNextHour, padY ),
-			( DetailsToday, padY ),
-			( DetailsTomorrow, 0 )
-		]
-		
-		for elem, padding in elems:
-			sub = elem( pos, options, parent )
-			self._subs.append( sub )
-			
-			topLeft, bottomRight = sub.GetBoundingBox()
-			pos = ( bottomRight[0] + padding, x )
-	
-	def GetBoundingBox( self ):
-		"""Returns the bounding bow for the dispay window."""
-		
-		return self._boundingBox
-	
-	def Update( self, prices ):
-		"""Updates the display."""
-		
-		for sub in self._subs:
-			sub.Update( prices )
-
-class Display:
-	"""Displays a sparkline graph of the price data with details of the prices."""
-	
-	_minSize = ( 14, 43 )
-	_padding = ( 1, 3 )
-	_subs = None
-	
-	def __init__( self, options, pos=( 0,0 ), parent=None ):
-		self._subs = []
-		y, x = pos
-		h, w =self._minSize
 		
 		# find the available space
 		if not parent:
 			parent = curses.initscr()
 		
-		ph, pw = parentSize = parent.getmaxyx()
+		ph, pw = self._parentSize = parent.getmaxyx()
 		
 		# check that all the content fits in the space
 		if pw < w or ph < h:
@@ -728,17 +648,128 @@ class Display:
 		
 		if pw < w + x or ph < h + y:
 			raise WindowPositionError( y, x )
+	
+	def _AddElements( self, elems ):
+		"""Adds elements from an array."""
+		
+		y, x = pos = self._pos
+		padY, padX = self._padding
+		
+		rows = len( elems )
+		cols = len( elems[0] )
+		
+		# add the elements from left to right and top to bottom
+		i = 0
+		while i < rows:
+			j = 0
+			while j < cols:
+				elem = elems[ i ][ j ]
+				current = elem( pos, self._options, self._parent )
+				self._subs.append( current )
+				
+				topLeft, bottomRight = current.GetBoundingBox()
+				pos = ( pos[0], bottomRight[1] + padX )
+				
+				j += 1
+			
+			pos = ( padY + bottomRight[0], x )
+			i += 1
+	
+	def GetBoundingBox( self ):
+		"""Returns the bounding bow for the dispay window."""
+		
+		return self._boundingBox
+	
+	def Update( self, prices ):
+		"""Updates the display."""
+		
+		for sub in self._subs:
+			sub.Update( prices )
+
+class HourDetails( _Collection ):
+	minSize = ( 2, 17 )
+	_padding = ( 0, 0 )
+	
+	def __init__( self, pos, options, parent=None ):
+		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
+		
+		elems = [
+				[ DetailCurrentHour ],
+				[ DetailNextHour ]
+			]
+		
+		self._AddElements( elems )
+
+class HorizontalDetails( _Collection ):
+	"""Displays a horzontal block of price details for today and tomorrow."""
+	
+	minSize = ( 7, 37 )
+	_padding = ( 1, 3 )
+	
+	def __init__( self, pos, options, parent=None ):
+		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
+		
+		elems = [
+				[ DetailCurrentHour, DetailNextHour ],
+				[ DetailsToday, DetailsTomorrow ]
+			]
+		
+		self._AddElements( elems )
+
+class VerticalDetails( _Collection ):
+	"""Displays a vertical block of price details for today and tomorrow."""
+	
+	minSize = ( 14, 17 )
+	_padding = ( 1, 3 )
+	
+	def __init__( self, pos, options, parent=None ):
+		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
+		
+		# add all the elements from top down in one column
+		elems = [
+				[ HourDetails ],
+				[ DetailsToday ],
+				[ DetailsTomorrow ]
+			]
+		
+		self._AddElements( elems )
+
+class Display( _Collection ):
+	"""Displays a sparkline graph of the price data with details of the prices."""
+	
+	minSize = ( 14, 43 )
+	_padding = ( 1, 3 )
+	
+	def __init__( self, options, pos=( 0,0 ), parent=None ):
+		padY, padX = self._padding
+		x, y = pos
+		
+		# add outer padding
+		y = y + padY
+		x = x + padX
+		pos = ( y, x )
+		
+		# deduct left and top padding from the size
+		h, w = self.minSize
+		h = h - padY
+		w = w - padX
+		size = ( h, w )
+		
+		try:
+			_Collection.__init__( self, pos, size, self._padding, options, parent )
+		except WindowPositionError:
+			raise WindowSizeError( self.minSize[1], self.minSize[0] )
 		
 		# find the layout and size based on available space and user options
-		layout, size = self._ChooseLayout( parentSize, options['preferred'] )
+		layout, size = self._ChooseLayout( options['preferred'] )
 		options['layout'] = layout
 		
-		self._CreateLayout( size, pos, options, parent )
+		self._CreateLayout( size, ( 0,0 ), options, parent )
 	
-	def _ChooseLayout( self, parentSize, preferred ):
+	def _ChooseLayout( self, preferred ):
 		"""Chooses the layout based on user settings and size constraints set by the parent window."""
 		
-		ph, pw = parentSize
+		ph, pw = self._parentSize
 		
 		constraints = self._SizeConstraints()
 		( hMin, hMax ), ( wMin, wMax ) = constraints
@@ -751,7 +782,7 @@ class Display:
 		
 		if  preferred == 'minimal':
 			layout = 'minimal'
-			size = self._minSize
+			size = self.minSize
 		
 		elif preferred == 'horizontal' and canUseHorizontal:
 			layout = 'horizontal'
@@ -771,7 +802,7 @@ class Display:
 		
 		else:
 			layout = 'minimal'
-			size = self._minSize
+			size = self.minSize
 		
 		return layout, size
 	
@@ -797,7 +828,6 @@ class Display:
 		"""Calculates the size constraints for the different layouts."""
 		
 		padY, padX = self._padding
-		
 		
 		# minimal horizontal size is the width of the horizontal details plus padding
 		minHorizontal = padX   + HorizontalDetails.minSize[1] +   padX
@@ -829,31 +859,23 @@ class Display:
 		
 		return constraint
 	
-	def _HorizontalLayout(self, options, parent):
+	def _HorizontalLayout( self, options, parent ):
 		"""Displays the graph and price details in a horizontal layout."""
 		
-		padY, padX = self._padding
 		options['height'] = VerticalDetails.minSize[0] + 1		# leave extra line for the lower graph caret
 		
-		elems = [ Graph, VerticalDetails ]
+		row = [ Graph, VerticalDetails ]
 		if options['reverse']:
-			elems.reverse()				# reverse the order of the elements
+			row.reverse()				# reverse the order of the elements
 		
-		# add the elements from left to right
-		pos = ( padY, padX )
-		for elem in elems:
-			sub = elem( pos, options, parent )
-			self._subs.append( sub )
-			
-			topLeft, bottomRight = sub.GetBoundingBox()
-			pos = ( padY, padX + bottomRight[1] )
+		elems = [ row ]
+		self._AddElements( elems )
 	
 	def _MinimalLayout( self, options, parent ):
 		"""Displays only the sparkline graph."""
 		
-		pos = self._padding
-		graph = Graph( pos, options, parent )
-		self._subs.append( graph )
+		elems = [ [ Graph ] ]
+		self._AddElements( elems )
 	
 	def _VerticalLayout( self, options, parent ):
 		"""Displays the graph and price details in a vertical layout."""
@@ -861,21 +883,12 @@ class Display:
 		padY, padX = self._padding
 		options['width'] = HorizontalDetails.minSize[1]
 		
-		elems = [ Graph, HorizontalDetails ]
+		elems = [
+				[ Graph ],
+				[ HorizontalDetails ]
+			]
+		
 		if options['reverse']:
 			elems.reverse()				# reverse the order of the elements
 		
-		# add the elements from top to bottom
-		pos = ( padY, padX )
-		for elem in elems:
-			sub = elem( pos, options, parent )
-			self._subs.append( sub )
-			
-			topLeft, bottomRight = sub.GetBoundingBox()
-			pos = ( padY + bottomRight[0], padX )
-	
-	def Update( self, prices ):
-		"""Updates the display."""
-		
-		for sub in self._subs:
-			sub.Update( prices )
+		self._AddElements( elems )
