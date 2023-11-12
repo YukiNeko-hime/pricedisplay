@@ -127,7 +127,7 @@ class App:
 	def _MidnightUpdate( self, now ):
 		"""Updates the price data and display at midnight."""
 		
-		self._dataAvailable = _AvailableFromTime()
+		self._dataAvailable = self._AvailableFromTime()
 		self._data.MidnightUpdate()
 		prices = self._data.GetPrices()
 		self._lastDataUpdate = now
