@@ -283,7 +283,12 @@ def Main():
 	parser.add_argument( '--debug', action='store_true', help='set debugging mode', required=False )
 	parser.add_argument( '--reset', action='store_true', help='reset the settings', required=False )
 	parser.add_argument( '--settings', default='', help='path to a settings file', metavar='PATH', required=False )
+	parser.add_argument( '--version', action='store_true', help='display the version', required=False )
 	args = parser.parse_args()
+	
+	if args.version:
+		print('Pricedisplay ' + __version__)
+		return
 	
 	global _debug
 	_debug = args.debug
