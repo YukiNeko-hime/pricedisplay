@@ -25,6 +25,8 @@ class _Queries:
 		answer = None
 		while answer == None:
 			inp = input( question + ' (y/n): ' )
+			inp = inp.lower()
+			
 			if inp in ( 'y', 'yes' ):
 				answer = True
 			elif inp in ( 'n', 'no' ):
