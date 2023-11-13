@@ -238,7 +238,7 @@ def _ResetSettings( settings ):
 		sys.exit( _configError )
 	
 	except MissingOptionError as err:
-		_ShowErrorMessage( 'Missing option in template: ' + err.option )
+		_ShowErrorMessage( err )
 		sys.exit( _configError )
 	
 	except Exception as err:

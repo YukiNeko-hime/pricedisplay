@@ -323,7 +323,7 @@ class Config(_Queries):
 				# the template is corrupted and can't be used
 				raise CorruptedTemplateError( 'The template file is corrupted: ' + self._templatePath )
 		else:
-			raise ConfigParsingError( "Can't parse the configuration file: " + self._configPath )
+			self.options = self._Parse()
 
 class _OptionIterator:
 	"""Iterates through the options in a given yaml representation of a config file."""
