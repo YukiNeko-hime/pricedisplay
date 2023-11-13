@@ -10,6 +10,107 @@ from .exceptions import WindowSizeError, WindowPositionError
 
 __version__ = '0.4.1'
 
+class Point:
+	"""Represents a point on the terminal screen."""
+	
+	y = 0
+	x = 0
+	pos = ( 0,0 )
+	
+	def __init__( self, pos ):
+		self.y = pos[0]
+		self.x = pos[1]
+		self.pos = pos
+	
+	def __getitem__( self, index ):
+		return self.pos[index]
+	
+	def __len__( self ):
+		return len( self.pos )
+	
+	def __str__( self ):
+		return 'Point( ' + str(self.pos) + ' )'
+
+class Size:
+	"""Represents the size of an object."""
+	
+	height = 0
+	width = 0
+	size = ( 0,0 )
+	
+	def __init__( self, size ):
+		self.height = size[0]
+		self.width = size[1]
+		self.size = size
+	
+	def __getitem__( self, index ):
+		return self.size[index]
+	
+	def __len__( self ):
+		return len( self.size )
+	
+	def __str__( self ):
+		return 'Size( ' + str(self.size) + ' )'
+
+class BBox( Point, Size ):
+	"""Represents the bounding box of an object. Two bounding boxes can be added returning a bounding box encompassing them both."""
+	
+	bottom = 0
+	left = 0
+	right = 0
+	top = 0
+	
+	def __init__( self, size, pos ):
+		Point.__init__( self, pos )
+		Size.__init__( self, size )
+		
+		self.bottom = self.y + self.height
+		self.left = self.x
+		self.right = self.x + self.width
+		self.top = self.y
+	
+	def __add__( self, bb ):
+		bottom = max( self.bottom, bb.bottom )
+		left = min( self.left, bb.left )
+		right = max( self.right, bb.right )
+		top = min( self.top, bb.top )
+		
+		y = top
+		x = left
+		pos = ( y, x )
+		
+		height = bottom - top
+		width = right - left
+		size = ( height, width )
+		
+		return BBox( size, pos )
+	
+	def __contains__( self, bb ):
+		if self.bottom < bb.bottom:
+			return False
+		
+		if self.left > bb.left:
+			return False
+		
+		if self.right < bb.right:
+			return False
+		
+		if self.top > bb.top:
+			return False
+		
+		return True
+	
+	def __getitem__( self, index ):
+		attrs = tuple( self.size ) + tuple( self.pos )
+		return attrs[index]
+	
+	def __len__( self ):
+		attrs = self.size + self.pos
+		return len( attrs )
+	
+	def __str__( self ):
+		return 'BBox( ' + str(self.size) + ', ' + str(self.pos) + ' )'
+
 class _DisplayWindow:
 	_minSize = ( 0,0 )
 	
