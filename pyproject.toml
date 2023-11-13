@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pricedisplay"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Lumi"]
 description = "Terminal display for the Finnish power price."
 readme = "README.md"
