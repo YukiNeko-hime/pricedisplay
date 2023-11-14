@@ -38,15 +38,15 @@ class DataRequestError(Exception):
 
 # display related errors
 class WindowSizeError( Exception ):
-	def __init__( self, width, height ):
-		self.height = height
-		self.width = width
+	def __init__( self, size ):
+		self.height = size[0]
+		self.width = size[1]
 		msg = 'Parent window is too small, display requires at least ' + str(height) + ' lines and ' + str(width) + ' cols'
 		Exception.__init__(self, msg)
 
 class WindowPositionError( Exception ):
-	def __init__( self, y, x ):
-		self.y = y
-		self.x = x
+	def __init__( self, pos ):
+		self.y = pos[0]
+		self.x = pos[1]
 		msg = 'Display overflows the parent window, when positioned at ' + str(y) + ', ' + str(x)
 		Exception.__init__(self, msg)
