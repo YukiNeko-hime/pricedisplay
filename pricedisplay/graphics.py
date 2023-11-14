@@ -112,14 +112,12 @@ class BBox( Point, Size ):
 		return 'BBox( ' + str(self.size) + ', ' + str(self.pos) + ' )'
 
 class _DisplayWindow:
-	_minSize = ( 0,0 )
+	minSize = Size( ( 0,0 ) )
 	
 	def __init__( self, size, pos, options, parent=None ):
-		y, x = pos
-		h, w = size
-		self._boundingBox = ((y, x), (y + h, x + w))
+		self._boundingBox = bb = BBox( size, pos )
 		self._low, self._high = options['limits']
-		self._size = size		
+		self._size = size
 		
 		try:
 			self._normalTimezone = options['normalTimezone']
@@ -129,15 +127,16 @@ class _DisplayWindow:
 		if not parent:
 			parent = curses.initscr()
 		
-		ph, pw = parent.getmaxyx()
+		pSize = parent.getmaxyx()
+		par = BBox( pSize, ( 0,0 ) )
 		
-		if pw < w or ph < h:
-			raise WindowSizeError(w, h)
+		if par.height < bb.height or par.width < bb.height:
+			raise WindowSizeError( size )
 		
-		if pw < w + x or ph < h + y:
-			raise WindowPositionError( y, x )
+		if not bb in par:
+			raise WindowPositionError( pos )
 		
-		self._win = parent.subwin(h, w, y, x)
+		self._win = parent.subwin( *bb )
 	
 	def _AccountForDST( self, hoursInDay ):
 		"""Takes into account the daylight saving time change, when finding the index for the current hour."""
@@ -175,10 +174,10 @@ class _DisplayWindow:
 class Graph( _DisplayWindow ):
 	"""Displays a simple sparkline graph of the power price, color coded based on the limits given in options. The size of the graph, carets used to mark the current hour, and the number of past hours to show can be given as options."""
 	
-	minSize = ( 12, 37 )
+	minSize = Size( ( 12, 37 ) )
 	_defaultOptions = {
-		'height': minSize[0],
-		'width': minSize[1],
+		'height': minSize.height,
+		'width': minSize.width,
 		'carets': [ '▼', '▲' ],
 		'pastHours': 8
 	}
@@ -200,7 +199,9 @@ class Graph( _DisplayWindow ):
 		
 		self._pastHours = pastHours
 		
-		size = ( opts['height'], opts['width'] )
+		h = opts['height']
+		w = opts['width']
+		size = Size( ( h, w ) )
 		_DisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _AddCarets( self, lines ):
@@ -363,7 +364,7 @@ class Graph( _DisplayWindow ):
 	def _GetScaledLineParameters( self, limits ):
 		"""Find the scaled parameters, when there are both positive and negative prices."""
 		
-		numLines = self._size[0] - 2		# Leave room for the carets
+		numLines = self._size.height - 2		# Leave room for the carets
 		minimum, maximum = limits
 		
 		ratio = maximum / ( maximum - minimum )
@@ -393,7 +394,7 @@ class Graph( _DisplayWindow ):
 	def _GetLineParameters( self, hasPrices, limits ):
 		"""Find the parameters for drawing the sparklines."""
 		
-		numLines = self._size[0] - 2		# Leave room for the carets
+		numLines = self._size.height - 2		# Leave room for the carets
 		minimum, maximum = limits
 		hasPos, hasNeg = hasPrices
 		
@@ -471,7 +472,7 @@ class Graph( _DisplayWindow ):
 			index = now.hour
 		
 		start = len( yesterday ) + index - pastHours
-		end = start + self._size[1] - 1
+		end = start + self._size.width - 1
 		
 		visiblePrices = prices[ start : end ]
 		
@@ -562,7 +563,7 @@ class _DetailWindow( _DisplayWindow ):
 class DetailCurrentHour( _DetailWindow ):
 	"""Displays the price for the current hour."""
 	
-	minSize = ( 1, 17 )
+	minSize = Size( ( 1, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -592,7 +593,7 @@ class DetailCurrentHour( _DetailWindow ):
 class DetailNextHour( _DetailWindow ):
 	"""Displays the price for the current hour."""
 	
-	minSize = ( 1, 17 )
+	minSize = Size( ( 1, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -625,7 +626,7 @@ class DetailNextHour( _DetailWindow ):
 class DetailsToday( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for today."""
 	
-	minSize = ( 5, 17 )
+	minSize = Size( ( 5, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -675,7 +676,7 @@ class DetailsToday( _DetailWindow ):
 class DetailsTomorrow( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for tomorrow."""
 	
-	minSize = ( 5, 17 )
+	minSize = Size( ( 5, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -723,15 +724,13 @@ class DetailsTomorrow( _DetailWindow ):
 class _Collection:
 	"""A collection of subwindows for structuring a display."""
 	
-	minSize = ( 0,0 )
-	_padding = ( 0,0 )
+	minSize = Size( ( 0,0 ) )
+	_padding = Size( ( 0,0 ) )
 	_subs = None
 	
 	def __init__( self, pos=( 0,0 ), size=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
-		y, x = self._pos = pos
-		h, w = self._size = size
-		
-		self._boundingBox = ((y, x), (y + h, x + w))
+		self._pos = pos
+		self._boundingBox = bb = BBox( size, pos )
 		self._options = options
 		self._padding = padding
 		self._parent = parent
@@ -741,20 +740,20 @@ class _Collection:
 		if not parent:
 			parent = curses.initscr()
 		
-		ph, pw = self._parentSize = parent.getmaxyx()
+		pSize = parent.getmaxyx()
+		par = BBox( pSize, ( 0,0 ) )
 		
-		# check that all the content fits in the space
-		if pw < w or ph < h:
-			raise WindowSizeError( w, h )
+		if par.height < bb.height or par.width < bb.height:
+			raise WindowSizeError( size )
 		
-		if pw < w + x or ph < h + y:
-			raise WindowPositionError( y, x )
+		if not bb in par:
+			raise WindowPositionError( pos )
 	
 	def _AddElements( self, elems ):
 		"""Adds elements from an array."""
 		
 		y, x = pos = self._pos
-		padY, padX = self._padding
+		pad = self._padding
 		
 		rows = len( elems )
 		cols = len( elems[0] )
@@ -768,12 +767,12 @@ class _Collection:
 				current = elem( pos, self._options, self._parent )
 				self._subs.append( current )
 				
-				topLeft, bottomRight = current.GetBoundingBox()
-				pos = ( pos[0], bottomRight[1] + padX )
+				bb = current.GetBoundingBox()
+				pos = ( pos[0], bb.right + pad.width )
 				
 				j += 1
 			
-			pos = ( padY + bottomRight[0], x )
+			pos = ( pad.height + bb.bottom, x )
 			i += 1
 	
 	def GetBoundingBox( self ):
@@ -790,41 +789,40 @@ class _Collection:
 class _PaddedCollection( _Collection ):
 	"""A collection with padding around the elements."""
 	
-	minSize = ( 0,0 )
-	_padding = ( 0,0 )
+	minSize = Size( ( 0,0 ) )
+	_padding = Size( ( 0,0 ) )
 	
 	def __init__( self, pos=( 0,0 ), size=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
-		h, w = self._size = size
-		padY, padX = self._padding = padding
-		padH = h + 2*padY
-		padW = w + 2*padX
-		x, y = pos
+		pad = self._padding = padding
+		paddedSize = ( 2*pad.height + size.height, 2*pad.width + size.width )
+		bb = BBox( paddedSize, pos )
 		
 		# find the available space
 		if not parent:
 			parent = curses.initscr()
 		
-		ph, pw = self._parentSize = parent.getmaxyx()
+		pSize = parent.getmaxyx()
+		par = BBox( pSize, ( 0,0 ) )
 		
 		# check that all the content fits in the space
-		if ph < padH or pw < padW:
-			raise WindowSizeError( padW, padH )
+		if par.height < bb.height or par.width < bb.width:
+			raise WindowSizeError( paddedSize )
 		
-		if ph < y + padH or pw < x + padW:
-			raise WindowPositionError( y, x )
+		if not bb in par:
+			raise WindowPositionError( pos )
 		
-		self._win = win = parent.subwin( padH, padW, y, x )
+		self._win = win = parent.subwin( *bb )
 		
 		# add padding to left and top with positioning
-		y = y + padY
-		x = x + padX
-		pos = ( y, x )
+		y = pos.y + pad.height
+		x = pos.x + pad.width
+		pos = Point( ( y, x ) )
 		
 		_Collection.__init__( self, pos, size, padding, options, win )
 
 class HourDetails( _Collection ):
-	minSize = ( 2, 17 )
-	_padding = ( 0, 0 )
+	minSize = Size( ( 2, 17 ) )
+	_padding = Size( ( 0, 0 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
@@ -839,8 +837,8 @@ class HourDetails( _Collection ):
 class HorizontalDetails( _Collection ):
 	"""Displays a horzontal block of price details for today and tomorrow."""
 	
-	minSize = ( 7, 37 )
-	_padding = ( 1, 3 )
+	minSize = Size( ( 7, 37 ) )
+	_padding = Size( ( 1, 3 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
@@ -855,8 +853,8 @@ class HorizontalDetails( _Collection ):
 class VerticalDetails( _Collection ):
 	"""Displays a vertical block of price details for today and tomorrow."""
 	
-	minSize = ( 14, 17 )
-	_padding = ( 1, 0 )
+	minSize = Size( ( 14, 17 ) )
+	_padding = Size( ( 1, 0 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
@@ -873,18 +871,20 @@ class VerticalDetails( _Collection ):
 class Display( _PaddedCollection ):
 	"""Displays a sparkline graph of the price data with details of the prices."""
 	
-	minSize = ( 14, 43 )
-	_padding = ( 1, 3 )
+	minSize = Size( ( 14, 43 ) )
+	_padding = Size( ( 1, 3 ) )
 	
-	def __init__( self, options, pos=( 0,0 ), parent=None ):
+	def __init__( self, options, pos=Point( ( 0,0 ) ), parent=None ):
+		pad = self._padding
+		
 		# find the available space
 		if not parent:
 			parent = curses.initscr()
 		
-		parentSize = parent.getmaxyx()
-		contentHeight = parentSize[0] - 2*self._padding[0]
-		contentWidth = parentSize[1] - 2*self._padding[1]
-		contentSize = ( contentHeight, contentWidth )
+		parSize = Size( parent.getmaxyx() )
+		contentHeight = parSize.height - 2*pad.height
+		contentWidth = parSize.width - 2*pad.width
+		contentSize = Size( ( contentHeight, contentWidth ) )
 		
 		# find the layout and size based on available space and user options
 		layout, size = self._ChooseLayout( contentSize, options['preferred'] )
@@ -892,22 +892,22 @@ class Display( _PaddedCollection ):
 		
 		# init the collection and create layout
 		_PaddedCollection.__init__( self, pos, size, self._padding, options, parent )
-		self._CreateLayout( size, pos, options )
+		self._CreateLayout( options )
 	
 	def _ChooseLayout( self, contentSize, preferred ):
 		"""Chooses the layout based on user settings and size constraints set by the parent window."""
 		
-		ch, cw = contentSize
+		contBB = BBox( contentSize, ( 0,0 ) )
 		
-		constraints = self._SizeConstraints()
-		( hMin, hMax ), ( wMin, wMax ) = constraints
-		
-		horizontalSize = ( hMin, wMax )
-		verticalSize = ( hMax, wMin )
+		verticalSize = self._VerticalSize()
+		horizontalSize = self._HorizontalSize()
 		minimalSize = Graph.minSize
 		
-		canUseVertical = ( hMax <= ch ) and ( wMin <= cw )
-		canUseHorizontal = ( hMin <= ch ) and ( wMax <= cw )
+		vertBB = BBox( verticalSize, ( 0,0 ) )
+		horBB = BBox( horizontalSize, ( 0,0 ) )
+		
+		canUseVertical = vertBB in contBB
+		canUseHorizontal = horBB in contBB
 		
 		if  preferred == 'minimal':
 			layout = 'minimal'
@@ -935,11 +935,8 @@ class Display( _PaddedCollection ):
 		
 		return layout, size
 	
-	def _CreateLayout( self, size, pos, options ):
+	def _CreateLayout( self, options ):
 		"""Creates the layout chosen for the window from subelements."""
-		
-		h, w = size
-		y, x = pos
 		
 		layout = options['layout']
 		
@@ -952,35 +949,40 @@ class Display( _PaddedCollection ):
 		elif layout == 'minimal':
 			self._MinimalLayout( options )
 	
-	def _SizeConstraints( self ):	
-		"""Calculates the size constraints for the different layouts."""
+	def _HorizontalSize( self ):	
+		"""Calculates the size of the horizontal layout."""
 		
-		padY, padX = self._padding
-		
-		# minimal horizontal size is the width of the horizontal details
-		minHorizontal = HorizontalDetails.minSize[1]
+		pad = self._padding
 		
 		# maximal horizontal size is the width of the graph, the width of the vertical details
-		maxHorizontal = Graph.minSize[1] + padX + VerticalDetails.minSize[1]
+		maxHorizontal = Graph.minSize.width + pad.width + VerticalDetails.minSize.width
 		
 		# minimal vertical size is the height of the vertical details plus an extra line for the lower graph caret
-		minVertical = VerticalDetails.minSize[0] + padY			# leave space for the lower graph caret line
+		minVertical = VerticalDetails.minSize.height + pad.height			# leave space for the lower graph caret line
+		
+		horizontalSize = Size( ( minVertical, maxHorizontal ) )
+		
+		return horizontalSize
+	
+	def _VerticalSize( self ):	
+		"""Calculates the size of the vertical layout."""
+		
+		pad = self._padding
+		
+		# minimal horizontal size is the width of the horizontal details
+		minHorizontal = HorizontalDetails.minSize.width
 		
 		# maximal vertical size is the height of the graph and the height of the horizontal details
-		maxVertical =Graph.minSize[0] + padY + HorizontalDetails.minSize[0]
+		maxVertical =Graph.minSize.height + pad.height + HorizontalDetails.minSize.height
 		
+		verticalSize = Size( ( maxVertical, minHorizontal ) )
 		
-		horizontal = ( minHorizontal, maxHorizontal )
-		vertical = ( minVertical, maxVertical )
-		
-		constraint =  ( vertical, horizontal )
-		
-		return constraint
+		return verticalSize
 	
 	def _HorizontalLayout( self, options ):
 		"""Displays the graph and price details in a horizontal layout."""
 		
-		options['height'] = VerticalDetails.minSize[0] + 1		# leave extra line for the lower graph caret
+		options['height'] = VerticalDetails.minSize.height + 1		# leave extra line for the lower graph caret
 		
 		row = [ Graph, VerticalDetails ]
 		if options['reverse']:
@@ -998,7 +1000,7 @@ class Display( _PaddedCollection ):
 	def _VerticalLayout( self, options ):
 		"""Displays the graph and price details in a vertical layout."""
 		
-		options['width'] = HorizontalDetails.minSize[1]
+		options['width'] = HorizontalDetails.minSize.width
 		
 		elems = [
 				[ Graph ],
