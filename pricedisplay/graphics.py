@@ -8,7 +8,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import WindowSizeError, WindowPositionError
 
-__version__ = '0.3.4'
+__version__ = '0.4.0'
 
 class _DisplayWindow:
 	_minSize = ( 0,0 )

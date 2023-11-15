@@ -13,7 +13,7 @@ from .graphics import Display
 
 from .exceptions import *
 
-__version__ = '0.3.4'
+__version__ = '0.4.0'
 
 _debug = 0
 

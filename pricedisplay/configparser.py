@@ -7,7 +7,7 @@ import yaml
 from .exceptions import ConfigParsingError
 from .exceptions import CorruptedTemplateError, MissingTemplateError, TemplateParsingError
 
-__version__ = '0.3.4'
+__version__ = '0.4.0'
 
 class _Queries:
 	def _YesNo( self, question ):
