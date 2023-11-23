@@ -112,31 +112,53 @@ class BBox( Point, Size ):
 		return 'BBox( ' + str(self.size) + ', ' + str(self.pos) + ' )'
 
 class _DisplayWindow:
+	"""Base class for display windows. Defines a bounding box and checks that the window fits in the parent window."""
+	
 	minSize = Size( ( 0,0 ) )
 	
-	def __init__( self, size, pos, options, parent=None ):
+	def __init__( self, size, pos, parent=None ):
 		self._boundingBox = bb = BBox( size, pos )
-		self._low, self._high = options['limits']
+		self._pos = pos
 		self._size = size
 		
-		try:
-			self._normalTimezone = options['normalTimezone']
-		except KeyError as err:
-			raise MissingOptionError( err.args )
+		self._FitsInside( bb, parent )
+		self._win = parent.subwin( *bb )
+	
+	def _FitsInside( self, boundingBox, parent ):
+		"""Check that the subwindow fits inside the parent. If no parent was specified, use the whole terminal screen."""
 		
+		# if no parent is specified, use the whole terminal screen
 		if not parent:
 			parent = curses.initscr()
 		
-		pSize = parent.getmaxyx()
-		par = BBox( pSize, ( 0,0 ) )
+		self._parent = parent
 		
-		if par.height < bb.height or par.width < bb.height:
+		# find the available space
+		parSize = parent.getmaxyx()
+		parBB = BBox( parSize, ( 0,0 ) )
+		
+		# check that all the content fits in the space
+		if parBB.height < boundingBox.height or parBB.width < boundingBox.height:
 			raise WindowSizeError( size )
 		
-		if not bb in par:
+		if not boundingBox in parBB:
 			raise WindowPositionError( pos )
+	
+	def GetBoundingBox( self ):
+		"""Returns the bounding box for the display window."""
 		
-		self._win = parent.subwin( *bb )
+		return self._boundingBox
+
+class _PriceDisplayWindow( _DisplayWindow ):
+	"""Base class for price display windows. Defines helper functions for color coding prices and taking into account DST changes."""
+	
+	minSize = Size( ( 0,0 ) )
+	
+	def __init__( self, size, pos, options, parent=None ):
+		self._low, self._high = options['limits']
+		self._normalTimezone = options['normalTimezone']
+		
+		_DisplayWindow.__init__( self, size, pos, parent )
 	
 	def _AccountForDST( self, hoursInDay ):
 		"""Takes into account the daylight saving time change, when finding the index for the current hour."""
@@ -165,13 +187,8 @@ class _DisplayWindow:
 			color = 3
 		
 		return curses.color_pair( color )
-	
-	def GetBoundingBox( self ):
-		"""Returns the bounding box for the dispay window."""
-		
-		return self._boundingBox
 
-class Graph( _DisplayWindow ):
+class Graph( _PriceDisplayWindow ):
 	"""Displays a simple sparkline graph of the power price, color coded based on the limits given in options. The size of the graph, carets used to mark the current hour, and the number of past hours to show can be given as options."""
 	
 	minSize = Size( ( 12, 37 ) )
@@ -202,7 +219,7 @@ class Graph( _DisplayWindow ):
 		h = opts['height']
 		w = opts['width']
 		size = Size( ( h, w ) )
-		_DisplayWindow.__init__(self, size, pos, options, parent)
+		_PriceDisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _AddCarets( self, lines ):
 		"""Adds carets to indicate the current hour in the sparklines."""
@@ -512,11 +529,11 @@ class Graph( _DisplayWindow ):
 		self._AddLines( lines, colors, visiblePrices )
 		win.refresh()
 
-class _DetailWindow( _DisplayWindow ):
+class _DetailWindow( _PriceDisplayWindow ):
 	"""Displays price details in text."""
 	
 	def __init__( self, pos, size, options, parent=None ):
-		_DisplayWindow.__init__(self, size, pos, options, parent)
+		_PriceDisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _AddDetail( self, name, price, linebreak=True, textStyle=None ):
 		"""Adds a detail with a name and price, formatted for the display."""
@@ -721,7 +738,7 @@ class DetailsTomorrow( _DetailWindow ):
 		
 		win.refresh()
 
-class _Collection:
+class _Collection( _DisplayWindow ):
 	"""A collection of subwindows for structuring a display."""
 	
 	minSize = Size( ( 0,0 ) )
@@ -729,25 +746,11 @@ class _Collection:
 	_subs = None
 	
 	def __init__( self, pos=( 0,0 ), size=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
-		self._pos = pos
-		self._boundingBox = bb = BBox( size, pos )
 		self._options = options
 		self._padding = padding
-		self._parent = parent
 		self._subs = []
 		
-		# find the available space
-		if not parent:
-			parent = curses.initscr()
-		
-		pSize = parent.getmaxyx()
-		par = BBox( pSize, ( 0,0 ) )
-		
-		if par.height < bb.height or par.width < bb.height:
-			raise WindowSizeError( size )
-		
-		if not bb in par:
-			raise WindowPositionError( pos )
+		_DisplayWindow.__init__( self, size, pos, parent )
 	
 	def _AddElements( self, elems ):
 		"""Adds elements from an array."""
@@ -775,50 +778,31 @@ class _Collection:
 			pos = ( pad.height + bb.bottom, x )
 			i += 1
 	
-	def GetBoundingBox( self ):
-		"""Returns the bounding box for the dispay window."""
-		
-		return self._boundingBox
-	
 	def Update( self, prices ):
 		"""Updates the display."""
 		
 		for sub in self._subs:
 			sub.Update( prices )
 
-class _PaddedCollection( _Collection ):
-	"""A collection with padding around the elements."""
+class _SpacedCollection( _Collection ):
+	"""A collection with a margin around the elements."""
 	
 	minSize = Size( ( 0,0 ) )
 	_padding = Size( ( 0,0 ) )
 	
-	def __init__( self, pos=( 0,0 ), size=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
-		pad = self._padding = padding
-		paddedSize = ( 2*pad.height + size.height, 2*pad.width + size.width )
+	def __init__( self, pos=( 0,0 ), size=( 0,0 ), margin=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
+		
+		# check that the content fits in the parent window with the specified margin
+		paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
 		bb = BBox( paddedSize, pos )
+		self._FitsInside( bb, parent )
 		
-		# find the available space
-		if not parent:
-			parent = curses.initscr()
-		
-		pSize = parent.getmaxyx()
-		par = BBox( pSize, ( 0,0 ) )
-		
-		# check that all the content fits in the space
-		if par.height < bb.height or par.width < bb.width:
-			raise WindowSizeError( paddedSize )
-		
-		if not bb in par:
-			raise WindowPositionError( pos )
-		
-		self._win = win = parent.subwin( *bb )
-		
-		# add padding to left and top with positioning
-		y = pos.y + pad.height
-		x = pos.x + pad.width
+		# add margin to left and top with positioning
+		y = pos.y + margin.height
+		x = pos.x + margin.width
 		pos = Point( ( y, x ) )
 		
-		_Collection.__init__( self, pos, size, padding, options, win )
+		_Collection.__init__( self, pos, size, padding, options, parent )
 
 class HourDetails( _Collection ):
 	minSize = Size( ( 2, 17 ) )
@@ -868,10 +852,11 @@ class VerticalDetails( _Collection ):
 		
 		self._AddElements( elems )
 
-class Display( _PaddedCollection ):
+class Display( _SpacedCollection ):
 	"""Displays a sparkline graph of the price data with details of the prices."""
 	
 	minSize = Size( ( 14, 43 ) )
+	_margin = Size( ( 1, 3 ) )
 	_padding = Size( ( 1, 3 ) )
 	
 	def __init__( self, options, pos=Point( ( 0,0 ) ), parent=None ):
@@ -891,7 +876,7 @@ class Display( _PaddedCollection ):
 		options['layout'] = layout
 		
 		# init the collection and create layout
-		_PaddedCollection.__init__( self, pos, size, self._padding, options, parent )
+		_SpacedCollection.__init__( self, pos, size, self._margin, self._padding, options, parent )
 		self._CreateLayout( options )
 	
 	def _ChooseLayout( self, contentSize, preferred ):
