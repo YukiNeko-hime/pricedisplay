@@ -2,13 +2,14 @@
 
 import curses
 import datetime
+import math
 import sparklines
 import warnings
 
 from .exceptions import MissingOptionError
 from .exceptions import WindowSizeError, WindowPositionError
 
-__version__ = '0.4.2'
+__version__ = '0.4.3'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -392,16 +393,13 @@ class Graph( _PriceDisplayWindow ):
 		minimum, maximum = limits
 		
 		ratio = maximum / ( maximum - minimum )
-		numPosLines = round( ratio*numLines )
+		
+		if ratio > 1/2:
+			numPosLines = math.floor( ratio*numLines )
+		else:
+			numPosLines = math.ceil( ratio*numLines )
+		
 		numNegLines = numLines - numPosLines
-		
-		if numPosLines == 0:
-			numPosLines = 1
-			numNegLines = numLines - 1
-		
-		if numNegLines == 0:
-			numPosLines = numLines - 1
-			numNegLines = 1
 		
 		if maximum < abs( minimum ):
 			posMaximum = - minimum * ( numPosLines / numNegLines )
