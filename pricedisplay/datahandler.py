@@ -9,7 +9,7 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 
 class PriceData:
 	"""Retrieves, parses and updates the price data from the specified source."""
