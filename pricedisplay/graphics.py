@@ -8,7 +8,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import WindowSizeError, WindowPositionError
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -602,7 +602,7 @@ class DetailCurrentHour( _DetailWindow ):
 		cur = today[index]
 		
 		win.clear()
-		if cur:
+		if cur != None:
 			self._AddDetail( 'current:', cur, False )
 		else:
 			self._AddMissingDetail( 'current:', False )
@@ -635,7 +635,7 @@ class DetailNextHour( _DetailWindow ):
 		next = nextPrices[index]
 		
 		win.clear()
-		if next:
+		if next != None:
 			self._AddDetail( 'next:', next, False )
 		else:
 			self._AddMissingDetail( 'next:', False )
