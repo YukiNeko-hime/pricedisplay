@@ -502,7 +502,7 @@ class Graph( _PriceDisplayWindow ):
 		# split out positive prices
 		posPrices = []
 		for price in visiblePrices:
-			if price != None and price >= 0:
+			if price != None and price > 0:
 				posPrices.append( price )
 			else:
 				posPrices.append( None )
