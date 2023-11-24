@@ -254,11 +254,17 @@ class Graph( _PriceDisplayWindow ):
 		curHour = pastHours + 1
 		
 		# find the highest possible position for the upper caret, searching from bottom up
-		i = len( lines ) - 2
+		i = iMax = len( lines ) - 2
 		while i > 0:
 			prev = lines[i + 1]
 			line = lines[i]
 			next = lines[i - 1]
+			
+			# first possible line for the lower caret, if negative price extends all the way down
+			if i == iMax and line[ pastHours ] != ' ' and next[ pastHours ] == ' ':
+				lowerCaretLine = prev[ : pastHours ] + carets[1] + prev[ curHour : ]
+				lines[i + 1] = lowerCaretLine
+				break
 			
 			# first empty space under negative sparkline on current hour
 			if prev[ pastHours ] != ' ' and next[ pastHours ] == ' ':
