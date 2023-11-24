@@ -17,17 +17,24 @@ data:
         question: When is data available?
         value: "13:30"
     
-    dateField:
-        description: "The field on the json data of the source, which contains an ISO formatted date."
-        type: string
-        question: Date field in json?
-        value: DateTime
-    
-    priceField:
-        description: "The field on the json data of the source, which contains the price for the hour."
-        type: string
-        question: Price field in json?
-        value: PriceWithTax
+    fields:
+        date:
+            description: "The field in the json data of the source, which contains an ISO formatted date."
+            type: string
+            question: Date field in json?
+            value: DateTime
+        
+        priceWithTax:
+            description: "The field in the json data of the source, which contains the price with tax for the hour."
+            type: string
+            question: Price with tax field in json?
+            value: PriceWithTax
+        
+        priceNoTax:
+            description: "The field in the json data of the source, which contains the price without tax for the hour."
+            type: string
+            question: Price without tax field in json?
+            value: PriceNoTax
     
     normalTimezone:
         description: "The timezone in normal time (used for dst changes)."

@@ -1,2 +1,5 @@
 renamed:
     layout.reversed: layout.reverse
+    
+    data.dateField: data.fields.date
+    data.priceField: data.fields.priceWithTax

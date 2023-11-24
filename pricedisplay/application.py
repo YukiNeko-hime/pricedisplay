@@ -13,7 +13,7 @@ from .graphics import Display
 
 from .exceptions import *
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 _debug = 0
 
@@ -37,8 +37,9 @@ class App:
 			freq = options['data.updateFrequency']
 			available = options['data.availableAt']
 			
-			dataOptions['dateField'] = options['data.dateField']
-			dataOptions['priceField'] = options['data.priceField']
+			dataOptions['dateField'] = options['data.fields.date']
+			dataOptions['priceWithTaxField'] = options['data.fields.priceWithTax']
+			dataOptions['priceNoTaxField'] = options['data.fields.priceNoTax']
 			dataOptions['source'] = options['data.source']
 			
 			displayOptions['carets'] = (

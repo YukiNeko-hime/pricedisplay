@@ -9,7 +9,7 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 class PriceData:
 	"""Retrieves, parses and updates the price data from the specified source."""
@@ -20,7 +20,8 @@ class PriceData:
 	def __init__( self, options ):
 		try:
 			self._dateField = options['dateField']
-			self._priceField = options['priceField']
+			self._priceWithTaxField = options['priceWithTaxField']
+			self._priceNoTaxField = options['priceNoTaxField']
 			self._source = options['source']
 		except KeyError as err:
 			raise MissingOptionError( err.args )
@@ -120,14 +121,33 @@ class PriceData:
 			raise DataParsingError( 'Timestamp is not in iso format' )
 		
 		try:
-			price = obj[ self._priceField ]
-			price = round( 100*price, 2 )
+			priceWithTax = obj[ self._priceWithTaxField ]
+			priceWithTax = round( 100*priceWithTax, 2 )
 			
 		except KeyError:
-			raise DataParsingError( 'No ' + self._priceField + ' in data' )
+			priceWithTax = None
 			
 		except ValueError:
-			raise DataParsingError( 'Price is not a number' )
+			raise DataParsingError( 'Price with tax is not a number' )
+		
+		try:
+			priceNoTax = obj[ self._priceNoTaxField ]
+			priceNoTax = round( 100*priceNoTax, 2 )
+			
+		except KeyError:
+			priceNoTax = None
+			
+		except ValueError:
+			raise DataParsingError( 'Price without tax is not a number' )
+		
+		if priceWithTax == None and priceNoTax == None:
+			raise DataParsingError( 'No ' + self._priceWithTaxField + ' or ' + self._priceNoTaxField + ' in data' )
+		
+		if priceWithTax != None:
+			price = priceWithTax
+		
+		if priceNoTax != None and priceNoTax < 0:
+			price = priceNoTax
 		
 		return date, price
 	
