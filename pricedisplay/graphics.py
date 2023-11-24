@@ -327,7 +327,8 @@ class Graph( _PriceDisplayWindow ):
 		
 		for line in lines[:-1]:
 			for hour in range( len(line) ):
-				if not line[hour] in self._carets and prices[hour] < 0:
+				price = prices[hour]
+				if not line[hour] in self._carets and price != None and price < 0:
 					win.addstr(line[hour], colors[hour] | curses.A_REVERSE)
 				else:
 					win.addstr(line[hour])
