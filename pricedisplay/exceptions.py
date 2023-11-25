@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-__version__ = '0.4.1'
+__version__ = '0.4.3'
 
 # general errors
 class MissingOptionError( Exception ):
@@ -26,13 +26,13 @@ class TemplateParsingError( Exception ):
 
 
 # data fetching and parsing related errors
-class NoDataError(Exception):
+class NoDataError( Exception ):
 	pass
 
-class DataParsingError(Exception):
+class DataParsingError( Exception ):
 	pass
 
-class DataRequestError(Exception):
+class DataRequestError( Exception ):
 	pass
 
 
@@ -41,12 +41,12 @@ class WindowSizeError( Exception ):
 	def __init__( self, size ):
 		self.height = size[0]
 		self.width = size[1]
-		msg = 'Parent window is too small, display requires at least ' + str(height) + ' lines and ' + str(width) + ' cols'
-		Exception.__init__(self, msg)
+		msg = 'Parent window is too small, display requires at least ' + str( height ) + ' lines and ' + str( width ) + ' cols'
+		Exception.__init__( self, msg )
 
 class WindowPositionError( Exception ):
 	def __init__( self, pos ):
 		self.y = pos[0]
 		self.x = pos[1]
-		msg = 'Display overflows the parent window, when positioned at ' + str(y) + ', ' + str(x)
-		Exception.__init__(self, msg)
+		msg = 'Display overflows the parent window, when positioned at ' + str( y ) + ', ' + str( x )
+		Exception.__init__( self, msg )

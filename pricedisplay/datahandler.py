@@ -9,7 +9,7 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.4.2'
+__version__ = '0.4.3'
 
 class PriceData:
 	"""Retrieves, parses and updates the price data from the specified source."""
@@ -44,8 +44,8 @@ class PriceData:
 		lastHourOffset = data[-1][0].utcoffset()
 		delta = lastHourOffset - firstHourOffset
 		
-		offset = delta.days*24 + delta.seconds/3600				# offset in hours
-		hoursInDay = 24 - offset
+		dstOffset = delta.days*24 + delta.seconds/3600				# offset in hours
+		hoursInDay = 24 - dstOffset
 		hoursInDay = int( hoursInDay )
 		
 		# pad the price data with None
@@ -110,46 +110,55 @@ class PriceData:
 	def _ParseObject( self, obj ):
 		"""Parses a json object to a datetime object and a two decimal price in cents."""
 		
-		try:
-			dateTime = obj[ self._dateField ]
-			date = datetime.datetime.fromisoformat( dateTime )
-			
-		except KeyError:
-			raise DataParsingError( 'No ' + self._dateField + ' in data' )
-			
-		except ValueError:
-			raise DataParsingError( 'Timestamp is not in iso format' )
+		date = self._ParseDate( obj, self._dateField )
+		priceWithTax = self._ParsePrice( obj, self._priceWithTaxField )
+		priceNoTax = self._ParsePrice( obj, self._priceNoTaxField )
 		
-		try:
-			priceWithTax = obj[ self._priceWithTaxField ]
-			priceWithTax = round( 100*priceWithTax, 2 )
-			
-		except KeyError:
-			priceWithTax = None
-			
-		except ValueError:
-			raise DataParsingError( 'Price with tax is not a number' )
-		
-		try:
-			priceNoTax = obj[ self._priceNoTaxField ]
-			priceNoTax = round( 100*priceNoTax, 2 )
-			
-		except KeyError:
-			priceNoTax = None
-			
-		except ValueError:
-			raise DataParsingError( 'Price without tax is not a number' )
-		
+		# if neither price was found, raise parsing error
 		if priceWithTax == None and priceNoTax == None:
 			raise DataParsingError( 'No ' + self._priceWithTaxField + ' or ' + self._priceNoTaxField + ' in data' )
 		
-		if priceWithTax != None:
+		# default to the price with tax if present in the data
+		if priceWithTax is not None:
 			price = priceWithTax
+		else:
+			price = priceNoTax
 		
+		# negative price has no tax included
 		if priceNoTax != None and priceNoTax < 0:
 			price = priceNoTax
 		
 		return date, price
+	
+	def _ParseDate( self, obj, field ):
+		"""Extracts the date from the json object."""
+		
+		try:
+			dateTime = obj[ field ]
+			date = datetime.datetime.fromisoformat( dateTime )
+			
+		except KeyError:
+			raise DataParsingError( 'No ' + field + ' in data' )
+			
+		except ValueError:
+			raise DataParsingError( 'Timestamp is not in iso format (' + field + ')' )
+		
+		return date
+	
+	def _ParsePrice( self, obj, field ):
+		"""Extracts the price from the json object and rounds it to two decimals. If there is no specified field, return None instead of a parsing error."""
+		
+		try:
+			price = obj[ field ]
+			price = round( 100*price, 2 )
+			
+		except KeyError:
+			price = None
+			
+		except ValueError:
+			raise DataParsingError( 'Price is not a number (' + field + ')' )
+		
+		return price
 	
 	def _RequestDataHTTP( self ):
 		"""Requests data with a http get."""

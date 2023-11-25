@@ -7,7 +7,7 @@ import yaml
 from .exceptions import ConfigParsingError
 from .exceptions import CorruptedTemplateError, MissingTemplateError, TemplateParsingError
 
-__version__ = '0.4.2'
+__version__ = '0.4.3'
 
 class _Queries:
 	def _YesNo( self, question ):
@@ -94,7 +94,6 @@ class Config(_Queries):
 		self._userConfigPath = os.path.join( userConfig, 'pricedisplay', __version__ )
 		self._userConfigFilePath = os.path.join( self._userConfigPath, 'config.yml' )
 		
-		
 		# use the default path for the template
 		if not templatePath:
 			modulePath = __file__
@@ -120,7 +119,6 @@ class Config(_Queries):
 		
 		value = self._OptionQuestion( question, type, default )
 		option['value'] = value
-
 	
 	def _Edit( self, config ):
 		"""Prompts the user to give a value for each option in the option type. If the option was migrated, skip it. Empty string sets the default."""
@@ -158,7 +156,7 @@ class Config(_Queries):
 		
 		# create a new config file from template
 		os.makedirs( self._userConfigPath, exist_ok=True )
-		config = self.CreateFromTemplate()
+		self.CreateFromTemplate()
 		
 		return ucfp
 	
@@ -168,8 +166,25 @@ class Config(_Queries):
 		userConfig = usersettings.appdirs.user_config_dir()
 		configPath = os.path.join( userConfig, 'pricedisplay' )
 		
+		oldVersion = self._FindOldVersion( configPath )
+		oldConfigFilePath = None
+		
+		if oldVersion:
+			oldConfigFilePath = os.path.join( configPath, oldVersion, 'config.yml' )
+			
+			# verify that the file is readable
+			try:
+				open( oldConfigFilePath, 'r' ).close()
+			except OSError:
+				oldConfigFilePath = None
+		
+		return oldConfigFilePath, oldVersion
+	
+	def _FindOldVersion( self, path ):
+		"""Checks for old config versions in the config path and returns the newest version."""
+		
 		# find all the config files in the config directory
-		gen = os.walk( configPath )
+		gen = os.walk( path )
 		try:
 			versions = next( gen )[1]
 		except StopIteration:
@@ -182,19 +197,10 @@ class Config(_Queries):
 		# if old versions exist, pick the latest
 		if len( versions ):
 			oldVersion = versions[-1]
-			oldConfigFilePath = os.path.join( configPath, oldVersion, 'config.yml' )
-			
-			# verify that the file is readable
-			try:
-				open( oldConfigFilePath, 'r' ).close()
-			except OSError:
-				oldConfigFilePath = None
-			
 		else:
-			oldConfigFilePath = None
 			oldVersion = None
 		
-		return oldConfigFilePath, oldVersion
+		return oldVersion
 	
 	def _LoadFile( self, path ):
 		"""Loads the config file as yaml."""
@@ -220,6 +226,29 @@ class Config(_Queries):
 				raise ConfigParsingError( "Can't parse the configuration file: " + self._configPath )
 		
 		return options
+	
+	def _WriteFile( self, config ):
+		"""Writes the config to a file in a neat and readable format."""
+		
+		with open( self._userConfigFilePath, 'w' ) as file:
+			written = []
+			for key, option in _OptionIterator( config ):
+				keys = key.split('.')
+				indent = ''
+				i = 0
+				while i < len( keys ):
+					curKey = '.'.join( keys[:i+1] )
+					if not curKey in written:
+						file.write( indent + keys[i] + ':\n' )
+						written.append( curKey )
+					
+					indent += '    '
+					i += 1
+				
+				dump = yaml.safe_dump( option )
+				lines = dump.split('\n')
+				for line in lines:
+					file.write( indent + line + '\n' )
 	
 	def CreateFromTemplate( self ):
 		"""Creates a new config file from a template, and writes it to the default config path. Gives the user an option to edit the values."""
@@ -249,26 +278,7 @@ class Config(_Queries):
 		if edit:
 			self._Edit( config )
 		
-		with open( self._userConfigFilePath, 'w' ) as file:
-			written = []
-			for key, option in _OptionIterator( config ):
-				keys = key.split('.')
-				indent = ''
-				i = 0
-				while i < len(keys):
-					curKey = '.'.join( keys[:i+1] )
-					if not curKey in written:
-						file.write( indent + keys[i] + ':\n' )
-						written.append(curKey)
-					
-					indent += '    '
-					i += 1
-				
-				dump = yaml.safe_dump( option )
-				lines = dump.split('\n')
-				for line in lines:
-					file.write( indent + line + '\n' )
-		
+		self._WriteFile( config )
 		self._config = config
 	
 	def Migrate( self, config ):
@@ -334,35 +344,38 @@ class _OptionIterator:
 		# move to the next index in the index chain
 		indices[-1] += 1
 		while not indices[-1] < len( keys[-1] ):
+			# current key has been iterated
 			indices.pop()
 			keys.pop()
+			
+			# progress to the next item in the previous key
 			if len( indices ):
 				indices[-1] += 1
 			else:
 				raise StopIteration
 		
-		
+		# search the current dictionary item for options
 		item = self._UseKeys( keys, indices )
 		while not self._IsOption( item ):
-			# the item is not an option or dictionary, move to next one
-			if type(item) != dict:
+			# the item is not a dictionary, move to next one
+			if type( item ) != dict:
 				return self.__next__()
 			
-			keys.append( list(item.keys()) )
-			indices.append(0)
-			
+			# add the new dictionary keys to the list of keys
+			keys.append( list( item.keys() ) )
+			indices.append( 0 )
 			item = self._UseKeys( keys, indices )
 		
 		keyList = self._MapKeys( keys, indices )
-		key = '.'.join( keyList )
+		optionKey = '.'.join( keyList )
 		
-		return key, item
+		return optionKey, item
 	
 	def _IsOption( self, item ):
 		"""Check if the given item is an option. An option is a dictionary, which has the keys 'value' and 'type'. An option may also contain additional keys."""
 		
 		# not a dictionary
-		if type(item) != dict:
+		if type( item ) != dict:
 			return False
 		
 		keys = item.keys()

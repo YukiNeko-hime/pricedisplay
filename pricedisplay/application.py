@@ -13,7 +13,7 @@ from .graphics import Display
 
 from .exceptions import *
 
-__version__ = '0.4.2'
+__version__ = '0.4.3'
 
 _debug = 0
 
@@ -181,6 +181,7 @@ class App:
 		self._running = False
 		self._EndCurses()
 
+###  helper functions for reading the settings, initializing and/or resetting the app and running it  ###
 
 def _InitApp( settings ):
 	"""Catch errors related to initializing the application."""

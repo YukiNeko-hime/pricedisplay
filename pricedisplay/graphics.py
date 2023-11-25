@@ -161,7 +161,7 @@ class _PriceDisplayWindow( _DisplayWindow ):
 		
 		_DisplayWindow.__init__( self, size, pos, parent )
 	
-	def _AccountForDST( self, hoursInDay ):
+	def _CurrentHourIndex( self, hoursInDay ):
 		"""Takes into account the daylight saving time change, when finding the index for the current hour."""
 		
 		now = datetime.datetime.now()
@@ -188,6 +188,8 @@ class _PriceDisplayWindow( _DisplayWindow ):
 			color = 3
 		
 		return curses.color_pair( color )
+
+###  display for the price graph  ###
 
 class Graph( _PriceDisplayWindow ):
 	"""Displays a simple sparkline graph of the power price, color coded based on the limits given in options. The size of the graph, carets used to mark the current hour, and the number of past hours to show can be given as options."""
@@ -231,7 +233,7 @@ class Graph( _PriceDisplayWindow ):
 		curHour = pastHours + 1
 		hours = len( ( pos + neg )[0] )
 		
-		# add an empty line to beginning and end to always fit the carets
+		# add an empty line to the beginning and end to always fit the carets
 		# if there are no lines, include the caret on the line
 		if pos:
 			pos = [ ' '*hours ] + pos
@@ -251,33 +253,33 @@ class Graph( _PriceDisplayWindow ):
 		"""Add the lower caret to the given lines."""
 		
 		carets = self._carets
-		pastHours = self._pastHours
-		curHour = pastHours + 1
+		curHour = self._pastHours
 		
-		# find the highest possible position for the upper caret, searching from bottom up
+		# find the lowest possible position for the upper caret, searching from bottom up
 		i = iMax = len( lines ) - 2
 		while i > 0:
 			prev = lines[i + 1]
-			line = lines[i]
+			cur = lines[i]
 			next = lines[i - 1]
 			
 			# first possible line for the lower caret, if negative price extends all the way down
-			if i == iMax and line[ pastHours ] != ' ' and next[ pastHours ] == ' ':
-				lowerCaretLine = prev[ : pastHours ] + carets[1] + prev[ curHour : ]
+			if i == iMax and cur[ curHour ] != ' ' and next[ curHour ] == ' ':
+				lowerCaretLine = prev[ : curHour ] + carets[1] + prev[ curHour+1 : ]
 				lines[i + 1] = lowerCaretLine
 				break
 			
 			# first empty space under negative sparkline on current hour
-			if prev[ pastHours ] != ' ' and next[ pastHours ] == ' ':
-				lowerCaretLine = prev[ : pastHours ] + carets[1] + prev[ curHour : ]
+			if prev[ curHour ] != ' ' and cur[ curHour ] != ' ' and next[ curHour ] == ' ':
+				lowerCaretLine = prev[ : curHour ] + carets[1] + prev[ curHour+1 : ]
 				lines[i + 1] = lowerCaretLine
 				break
 			
 			# last possible line for the lower caret, if price is positive
 			# the character is empty, because the value for the price is None
-			if i == 1 and next[ pastHours ] == ' ':
-				lowerCaretLine = next[ : pastHours ] + carets[1] + next[ curHour : ]
+			if i == 1 and next[ curHour ] == ' ':
+				lowerCaretLine = next[ : curHour ] + carets[1] + next[ curHour+1 : ]
 				lines[0] = lowerCaretLine
+				break
 			
 			i -= 1
 		
@@ -287,25 +289,25 @@ class Graph( _PriceDisplayWindow ):
 		"""Add the upper caret to the given lines."""
 		
 		carets = self._carets
-		pastHours = self._pastHours
-		curHour = pastHours + 1
+		curHour = self._pastHours
 		
-		# find the lowest possible position for the upper caret, searching from top down
+		# find the highest possible position for the upper caret, searching from top down
 		i = 0
 		while i < len( lines ) - 1:
 			line = lines[i]
 			next = lines[i + 1]
 			
 			# last empty space for the upper caret, if price is positive
-			if line[ pastHours ] == ' ' and next[ pastHours ] != ' ':
-				upperCaretLine = line[ : pastHours ] + carets[0] + line[ curHour : ]
+			if line[ curHour ] == ' ' and next[ curHour ] != ' ':
+				upperCaretLine = line[ : curHour ] + carets[0] + line[ curHour+1 : ]
 				lines[i] = upperCaretLine
 				break
 			
 			# last possible line for the upper caret, if price is negative
-			if i == len( lines ) - 2 and next[ pastHours ] == ' ':
-				upperCaretLine = next[ : pastHours ] + carets[0] + next[ curHour : ]
+			if i == len( lines ) - 2 and next[ curHour ] == ' ':
+				upperCaretLine = next[ : curHour ] + carets[0] + next[ curHour+1 : ]
 				lines[-1] = upperCaretLine
+				break
 			
 			i += 1
 		
@@ -336,9 +338,9 @@ class Graph( _PriceDisplayWindow ):
 			for hour in range( len(line) ):
 				price = prices[hour]
 				if not line[hour] in self._carets and price != None and price < 0:
-					win.addstr(line[hour], colors[hour] | curses.A_REVERSE)
+					win.addstr( line[hour], colors[hour] | curses.A_REVERSE )
 				else:
-					win.addstr(line[hour])
+					win.addstr( line[hour] )
 			
 			win.addstr( '\n' )
 	
@@ -350,9 +352,9 @@ class Graph( _PriceDisplayWindow ):
 		for line in lines[1:]:
 			for hour in range( len(line) ):
 				if not line[hour] in self._carets:
-					win.addstr(line[hour], colors[hour])
+					win.addstr( line[hour], colors[hour] )
 				else:
-					win.addstr(line[hour])
+					win.addstr( line[hour] )
 			
 			win.addstr( '\n' )
 	
@@ -394,17 +396,23 @@ class Graph( _PriceDisplayWindow ):
 		
 		ratio = maximum / ( maximum - minimum )
 		
-		if ratio > 1/2:
-			numPosLines = math.floor( ratio*numLines )
-		else:
-			numPosLines = math.ceil( ratio*numLines )
-		
-		numNegLines = numLines - numPosLines
-		
 		if maximum < abs( minimum ):
+			# there are more negative lines than positive
+			# ceil ensures there's enough room for the positive graph
+			
+			numPosLines = math.ceil( ratio*numLines )
+			numNegLines = numLines - numPosLines
+			
 			posMaximum = - minimum * ( numPosLines / numNegLines )
 			negMaximum = - minimum
+		
 		else:
+			# there are more positive lines than negative
+			# floor ensures there's enough room for the negative graph
+			
+			numPosLines = math.floor( ratio*numLines )
+			numNegLines = numLines - numPosLines
+			
 			posMaximum = maximum
 			negMaximum = maximum * ( numNegLines / numPosLines )
 		
@@ -413,21 +421,22 @@ class Graph( _PriceDisplayWindow ):
 		
 		return posParams, negParams
 	
-	def _GetLineParameters( self, hasPrices, limits ):
+	def _GetLineParameters( self, limits ):
 		"""Find the parameters for drawing the sparklines."""
 		
-		numLines = self._size.height - 2		# Leave room for the carets
+		# Leave room for the carets
+		numLines = self._size.height - 2
 		minimum, maximum = limits
-		hasPos, hasNeg = hasPrices
 		
-		if hasPos and hasNeg:
+		if minimum < 0 and maximum > 0:
 			posParams, negParams = self._GetScaledLineParameters( limits )
-		elif hasNeg:
+		
+		elif minimum < 0:
 			posParams = ( 0,0 )
-			negParams = numLines, -minimum
+			negParams = ( numLines, -minimum )
 		
 		else:
-			posParams = ( numLines, maximum)
+			posParams = ( numLines, maximum )
 			negParams = ( 0,0 )
 		
 		return posParams, negParams
@@ -436,6 +445,7 @@ class Graph( _PriceDisplayWindow ):
 		"""Get sparklines for negative prices."""
 		
 		# normalize negative prices to positive values
+		# negative graph can then be printed with inverted colors
 		normPrices = []
 		for price in prices:
 			if price != None:
@@ -465,12 +475,7 @@ class Graph( _PriceDisplayWindow ):
 		
 		limits = self._GetLimits( visiblePrices )
 		posPrices, negPrices = self._SplitPrices( visiblePrices )
-		
-		hasPos = any( price is not None for price in posPrices )
-		hasNeg = any( price is not None for price in negPrices )
-		hasPrices = hasPos, hasNeg
-		
-		posParams, negParams = self._GetLineParameters( hasPrices, limits )
+		posParams, negParams = self._GetLineParameters( limits )
 		
 		posSparks = self._GetPositiveSparklines( posPrices, *posParams )
 		negSparks = self._GetNegativeSparklines( negPrices, *negParams )
@@ -488,10 +493,7 @@ class Graph( _PriceDisplayWindow ):
 		curHour = pastHours + 1
 		
 		hours = len( today )
-		if hours != 24:
-			index = self._AccountForDST( hours )
-		else:
-			index = now.hour
+		index = self._CurrentHourIndex( hours )
 		
 		start = len( yesterday ) + index - pastHours
 		end = start + self._size.width - 1
@@ -503,21 +505,22 @@ class Graph( _PriceDisplayWindow ):
 	def _SplitPrices( self, visiblePrices ):
 		"""Splits the prices to positive and negative lists, filling in None for missing values."""
 		
-		# split out positive prices
+		# split prices to positive and negative prices
 		posPrices = []
-		for price in visiblePrices:
-			if price != None and price > 0:
-				posPrices.append( price )
-			else:
-				posPrices.append( None )
-		
-		# split out negative prices
 		negPrices = []
 		for price in visiblePrices:
-			if price != None and price < 0:
-				negPrices.append( price )
-			else:
+			if price == None:
+				posPrices.append( None )
 				negPrices.append( None )
+			
+			else:
+				if price > 0:
+					posPrices.append( price )
+					negPrices.append( None )
+				
+				if price < 0:
+					posPrices.append( None )
+					negPrices.append( price )
 		
 		return posPrices, negPrices
 	
@@ -533,6 +536,8 @@ class Graph( _PriceDisplayWindow ):
 		win.clear()
 		self._AddLines( lines, colors, visiblePrices )
 		win.refresh()
+
+###  text based display windows for price details  ###
 
 class _DetailWindow( _PriceDisplayWindow ):
 	"""Displays price details in text."""
@@ -598,10 +603,7 @@ class DetailCurrentHour( _DetailWindow ):
 		
 		today = prices[1]
 		hours = len( today )
-		if hours == 24:
-			index = now.hour
-		else:
-			index = self._AccountForDST( hours )
+		index = self._CurrentHourIndex( hours )
 		
 		cur = today[index]
 		
@@ -630,10 +632,7 @@ class DetailNextHour( _DetailWindow ):
 		tomorrow = prices[2]
 		
 		hours = len( today )
-		if hours == 24:
-			index = now.hour + 1
-		else:
-			index = self._AccountForDST( hours ) + 1
+		index = self._CurrentHourIndex( hours ) + 1
 		
 		nextPrices = today + tomorrow
 		next = nextPrices[index]
@@ -742,6 +741,8 @@ class DetailsTomorrow( _DetailWindow ):
 			self._AddMissingPrices()
 		
 		win.refresh()
+
+###  collections of subwindows for structuring the screen  ###
 
 class _Collection( _DisplayWindow ):
 	"""A collection of subwindows for structuring a display."""
