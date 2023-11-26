@@ -3,3 +3,5 @@ renamed:
     
     data.dateField: data.fields.date
     data.priceField: data.fields.priceWithTax
+    
+    caret.past_hours: caret.pastHours

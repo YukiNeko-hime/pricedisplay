@@ -52,7 +52,7 @@ class App:
 				options['price.high']
 			)
 			
-			displayOptions['pastHours'] = options['caret.past_hours']
+			displayOptions['pastHours'] = options['caret.pastHours']
 			displayOptions['preferred'] = options['layout.preferred']
 			displayOptions['reverse'] = options['layout.reverse']
 			

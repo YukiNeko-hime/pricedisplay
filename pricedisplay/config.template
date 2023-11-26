@@ -58,7 +58,7 @@ layout:
         value: false
 
 caret:
-    past_hours:
+    pastHours:
         description: "The number of past hours visible in the graph. Negative number parses to zero. If the number of hours would exceed the width of the display, shows as many as can be fitted."
         essential: true
         type: int
