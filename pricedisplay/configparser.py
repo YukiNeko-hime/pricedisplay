@@ -191,12 +191,15 @@ class Config(_Queries):
 			versions = []
 		
 		# don't consider the current version, if it exists
-		if len( versions ) and versions[-1] == __version__:
-			versions.pop()
+		oldVersions = []
+		for version in versions:
+			if version < __version__:
+				oldVersions.append( version )
 		
 		# if old versions exist, pick the latest
-		if len( versions ):
-			oldVersion = versions[-1]
+		oldVersions.sort()
+		if len( oldVersions ):
+			oldVersion = oldVersions[-1]
 		else:
 			oldVersion = None
 		
