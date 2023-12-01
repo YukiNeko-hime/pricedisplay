@@ -208,6 +208,12 @@ def _InitSettings( settingsPath ):
 	try:
 		return Config( settingsPath )
 	
+	except KeyboardInterrupt:
+		if _debug:
+			print( 'KeyboardInterrupt, exiting gracefully', file=sys.stderr )
+		
+		sys.exit( _noErrors )
+	
 	except ( ConfigParsingError, MissingTemplateError, TemplateParsingError ) as err:
 		_ShowErrorMessage( err )
 		sys.exit( _configError )
@@ -223,6 +229,12 @@ def _ResetSettings( settings ):
 		settings.Reset()
 		app = App( settings.options )
 		return app
+	
+	except KeyboardInterrupt:
+		if _debug:
+			print( 'KeyboardInterrupt, exiting gracefully', file=sys.stderr )
+		
+		sys.exit( _noErrors )
 	
 	except ( ConfigParsingError, CorruptedTemplateError, MissingTemplateError, TemplateParsingError ) as err:
 		_ShowErrorMessage( err )
@@ -249,6 +261,7 @@ def _StartApp( app ):
 	
 	try:
 		app.Start()
+	
 	except KeyboardInterrupt:
 		if _debug:
 			print( 'KeyboardInterrupt, exiting gracefully', file=sys.stderr )
