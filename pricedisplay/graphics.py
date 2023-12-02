@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import WindowSizeError, WindowPositionError
 
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -123,7 +123,7 @@ class _DisplayWindow:
 		self._size = size
 		
 		self._FitsInside( bb, parent )
-		self._win = parent.subwin( *bb )
+		self._win = self._parent.subwin( *bb )
 	
 	def _FitsInside( self, boundingBox, parent ):
 		"""Check that the subwindow fits inside the parent. If no parent was specified, use the whole terminal screen."""
