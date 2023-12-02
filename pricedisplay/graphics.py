@@ -140,10 +140,10 @@ class _DisplayWindow:
 		
 		# check that all the content fits in the space
 		if parBB.height < boundingBox.height or parBB.width < boundingBox.height:
-			raise WindowSizeError( size )
+			raise WindowSizeError( boundingBox.size )
 		
 		if not boundingBox in parBB:
-			raise WindowPositionError( pos )
+			raise WindowPositionError( boundingBox.pos )
 	
 	def GetBoundingBox( self ):
 		"""Returns the bounding box for the display window."""
@@ -803,7 +803,7 @@ class _SpacedCollection( _Collection ):
 		padding = Size( padding )
 		
 		# check that the content fits in the parent window with the specified margin
-		paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
+		self._size = paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
 		bb = BBox( paddedSize, pos )
 		self._FitsInside( bb, parent )
 		
