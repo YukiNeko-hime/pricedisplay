@@ -797,6 +797,10 @@ class _SpacedCollection( _Collection ):
 	_padding = Size( ( 0,0 ) )
 	
 	def __init__( self, pos=( 0,0 ), size=( 0,0 ), margin=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
+		pos = Point( pos )
+		size = Size( size )
+		margin = Size( margin )
+		padding = Size( padding )
 		
 		# check that the content fits in the parent window with the specified margin
 		paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
