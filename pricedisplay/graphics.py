@@ -194,7 +194,7 @@ class _PriceDisplayWindow( _DisplayWindow ):
 class Graph( _PriceDisplayWindow ):
 	"""Displays a simple sparkline graph of the power price, color coded based on the limits given in options. The size of the graph, carets used to mark the current hour, and the number of past hours to show can be given as options."""
 	
-	minSize = Size( ( 12, 37 ) )
+	minSize = Size( ( 12, 36 ) )
 	_defaultOptions = {
 		'height': minSize.height,
 		'width': minSize.width,
@@ -801,9 +801,8 @@ class _SpacedCollection( _Collection ):
 		size = Size( size )
 		margin = Size( margin )
 		padding = Size( padding )
-		
 		# check that the content fits in the parent window with the specified margin
-		self._size = paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
+		paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
 		bb = BBox( paddedSize, pos )
 		self._FitsInside( bb, parent )
 		
@@ -865,7 +864,7 @@ class VerticalDetails( _Collection ):
 class Display( _SpacedCollection ):
 	"""Displays a sparkline graph of the price data with details of the prices."""
 	
-	minSize = Size( ( 14, 43 ) )
+	minSize = Size( ( 14, 42 ) )
 	_margin = Size( ( 1, 3 ) )
 	_padding = Size( ( 1, 3 ) )
 	
