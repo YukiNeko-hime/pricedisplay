@@ -13,7 +13,7 @@ from .graphics import PriceDisplay
 
 from .exceptions import *
 
-__version__ = '0.4.4'
+__version__ = '0.5.0'
 
 _debug = 0
 
@@ -50,6 +50,11 @@ class App:
 			displayOptions['limits'] = (
 				options['price.low'],
 				options['price.high']
+			)
+			
+			displayOptions['day'] = (
+				options['day.begins'],
+				options['day.ends']
 			)
 			
 			displayOptions['pastHours'] = options['caret.pastHours']

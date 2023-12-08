@@ -77,6 +77,18 @@ caret:
             type: char
             question: Carot below graph?
             value: ▲
+day:
+    begins:
+        description: "Day begins at this hour."
+        type: int
+        question: Day begins?
+        value: 6
+        
+    ends:
+        description: "Day ends at this hour."
+        type: int
+        question: Day ends?
+        value: 22
 
 price:
     high:
