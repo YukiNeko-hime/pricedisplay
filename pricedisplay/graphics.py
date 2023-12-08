@@ -172,8 +172,9 @@ class _PriceDisplayWindow( _DisplayWindow ):
 		delta = hoursInDay - 24
 		
 		index = now.hour + (abs(delta) + delta)/2 - offset
+		index = int( index ) % 24
 		
-		return int( index )
+		return index
 	
 	def _PriceToColor( self, price ):
 		"""Finds a curses color pair based on the given price (low, medium, high)."""
