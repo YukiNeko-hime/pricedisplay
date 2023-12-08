@@ -486,7 +486,6 @@ class Graph( _PriceDisplayWindow ):
 	def _GetVisiblePrices( self, priceData ):
 		"""Gets the prices, which are visible taking into account dst and the number of past hours to show. Returns a list of the visible prices."""
 		
-		now = datetime.datetime.now()
 		yesterday, today, tomorrow = priceData
 		
 		prices = yesterday + today + tomorrow
@@ -600,7 +599,6 @@ class DetailCurrentHour( _DetailWindow ):
 		"""Updates the displayed price."""
 		
 		win = self._win
-		now = datetime.datetime.now()
 		
 		today = prices[1]
 		hours = len( today )
@@ -627,7 +625,6 @@ class DetailNextHour( _DetailWindow ):
 		"""Updates the displayed price."""
 		
 		win = self._win
-		now = datetime.datetime.now()
 		
 		today = prices[1]
 		tomorrow = prices[2]
@@ -682,10 +679,8 @@ class DetailsToday( _DetailWindow ):
 		"""Updates the displayed prices."""
 		
 		win = self._win
-		now = datetime.datetime.now()
 		
 		win.clear()
-		
 		win.addstr( 'TODAY\n\n', curses.color_pair(4) )
 		
 		if prices[1][0]:
@@ -862,14 +857,14 @@ class VerticalDetails( _Collection ):
 		
 		self._AddElements( elems )
 
-class Display( _SpacedCollection ):
+class PriceDisplay( _SpacedCollection ):
 	"""Displays a sparkline graph of the price data with details of the prices."""
 	
 	minSize = Size( ( 14, 42 ) )
 	_margin = Size( ( 1, 3 ) )
 	_padding = Size( ( 1, 3 ) )
 	
-	def __init__( self, options, pos=Point( ( 0,0 ) ), parent=None ):
+	def __init__( self, pos, options, parent=None ):
 		pad = self._padding
 		
 		# find the available space
@@ -883,7 +878,7 @@ class Display( _SpacedCollection ):
 		
 		# find the layout and size based on available space and user options
 		layout, size = self._ChooseLayout( contentSize, options['preferred'] )
-		options['layout'] = layout
+		self._layout = layout
 		
 		# init the collection and create layout
 		_SpacedCollection.__init__( self, pos, size, self._margin, self._padding, options, parent )
@@ -933,7 +928,7 @@ class Display( _SpacedCollection ):
 	def _CreateLayout( self, options ):
 		"""Creates the layout chosen for the window from subelements."""
 		
-		layout = options['layout']
+		layout = self._layout
 		
 		if layout == 'vertical':
 			self._VerticalLayout( options )

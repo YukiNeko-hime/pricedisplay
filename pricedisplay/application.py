@@ -9,11 +9,11 @@ import traceback
 
 from .configparser import Config
 from .datahandler import PriceData
-from .graphics import Display
+from .graphics import PriceDisplay
 
 from .exceptions import *
 
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 
 _debug = 0
 
@@ -66,7 +66,7 @@ class App:
 		self._dataAvailable = self._AvailableFromTime()
 		
 		stdscr = curses.initscr()
-		self._display = Display( displayOptions, parent=stdscr )
+		self._display = PriceDisplay( ( 0,0 ), displayOptions, parent=stdscr )
 		
 		self._data = PriceData( dataOptions )
 	
@@ -103,15 +103,15 @@ class App:
 		self._lastDisplayUpdate = now
 		self._lastDataUpdate = now
 	
-	def _AvailableFromTime(self):
+	def _AvailableFromTime( self ):
 		"""Find the datetime after which new price data is expected to be available."""
 		
 		today = datetime.datetime.today()
 		iso = today.isoformat()
-		date = iso.split('T')[0]
+		date = iso.split( 'T' )[0]
 		
 		availableIso = date + 'T' + self._available
-		availableTime = datetime.datetime.fromisoformat(availableIso)
+		availableTime = datetime.datetime.fromisoformat( availableIso )
 		
 		return availableTime
 	
@@ -164,7 +164,7 @@ class App:
 			if now.hour != self._lastDisplayUpdate.hour:
 				self._HourlyUpdate( now )
 			
-			time.sleep(1)
+			time.sleep( 1 )
 		
 		
 	def Start( self ):
@@ -292,7 +292,7 @@ def Main():
 	args = parser.parse_args()
 	
 	if args.version:
-		print('Pricedisplay ' + __version__)
+		print( 'Pricedisplay ' + __version__ )
 		return
 	
 	global _debug
