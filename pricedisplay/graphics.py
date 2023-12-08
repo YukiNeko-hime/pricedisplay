@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.4.4'
+__version__ = '0.5.0'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -544,7 +544,18 @@ class Graph( _PriceDisplayWindow ):
 class _DetailWindow( _PriceDisplayWindow ):
 	"""Displays price details in text."""
 	
+	_day = [ 6, 22 ]
+	_night = [ 22, 6 ]
+	
 	def __init__( self, pos, size, options, parent=None ):
+		start, end = options['day']
+		
+		# normalize the start and end of the night
+		start = self._Normalize( start )
+		end = self._Normalize( end )
+		self._day = [ start, end ]
+		self._night = [ end, start ]
+		
 		_PriceDisplayWindow.__init__(self, size, pos, options, parent)
 	
 	def _AddDetail( self, name, price, linebreak=True, textStyle=None ):
@@ -596,6 +607,18 @@ class _DetailWindow( _PriceDisplayWindow ):
 		price = price.rjust( 6 )
 		
 		return price
+	
+	def _Normalize( self, var, limits=[ 0, 24 ] ):
+		"""Normalize the variable to be between limits."""
+		
+		if var < limits[0]:
+			return limits[0]
+		
+		elif var > limits[1]:
+			return limits[1]
+		
+		else:
+			return var
 
 class DetailCurrentHour( _DetailWindow ):
 	"""Displays the price for the current hour."""
@@ -644,7 +667,7 @@ class DetailNextHour( _DetailWindow ):
 class DetailsToday( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for today."""
 	
-	minSize = Size( ( 5, 17 ) )
+	minSize = Size( ( 7, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -655,7 +678,22 @@ class DetailsToday( _DetailWindow ):
 		today = prices.today
 		self._AddDetail ('highest:', today.high )
 		self._AddDetail( 'average:', today.average )
-		self._AddDetail( 'lowest:', today.low, False )
+		self._AddDetail( 'lowest:', today.low )
+	
+	def _AddDayAverage( self, prices ):
+		start, end = self._day
+		day = prices.today[ start : end ]
+		self._AddDetail( 'day:', day.average )
+	
+	def _AddNightAverage( self, prices ):
+		now = datetime.datetime.now()
+		start, end = self._night
+		if now.hour < end:
+			night = prices.yesterday[ start : ] + prices.today[ : end ]
+		else:
+			night = prices.today[ start : ] + prices.tomorrow[ : end ]
+		
+		self._AddDetail( 'night:', night.average, False )
 	
 	def Update( self, prices ):
 		"""Updates the displayed prices."""
@@ -665,12 +703,14 @@ class DetailsToday( _DetailWindow ):
 		win.clear()
 		win.addstr( 'TODAY\n\n', curses.color_pair(4) )
 		self._AddPrices( prices )
+		self._AddDayAverage( prices )
+		self._AddNightAverage( prices )
 		win.refresh()
 
 class DetailsTomorrow( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for tomorrow."""
 	
-	minSize = Size( ( 5, 17 ) )
+	minSize = Size( ( 6, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -681,7 +721,12 @@ class DetailsTomorrow( _DetailWindow ):
 		tomorrow = prices.tomorrow
 		self._AddDetail( 'highest:', tomorrow.high )
 		self._AddDetail( 'average:', tomorrow.average )
-		self._AddDetail( 'lowest:', tomorrow.low, False )
+		self._AddDetail( 'lowest:', tomorrow.low )
+	
+	def _AddDayAverage( self, prices ):
+		start, end = self._day
+		day = prices.tomorrow[ start : end ]
+		self._AddDetail( 'day:', day.average, False )
 	
 	def Update( self, prices ):
 		"""Updates the displayed prices."""
@@ -691,6 +736,7 @@ class DetailsTomorrow( _DetailWindow ):
 		win.clear()
 		win.addstr( 'TOMORROW\n\n', curses.color_pair(4) )
 		self._AddPrices( prices )
+		self._AddDayAverage( prices )
 		win.refresh()
 
 ###  collections of subwindows for structuring the screen  ###
@@ -827,7 +873,7 @@ class HourDetails( _Collection ):
 class HorizontalDetails( _Collection ):
 	"""Displays a horzontal block of price details for today and tomorrow."""
 	
-	minSize = Size( ( 7, 37 ) )
+	minSize = Size( ( 9, 37 ) )
 	_padding = Size( ( 1, 3 ) )
 	
 	def __init__( self, pos, options, parent=None ):
@@ -839,7 +885,7 @@ class HorizontalDetails( _Collection ):
 			]
 		
 		rows = [
-			NextDetails.minSize.height,
+			DetailCurrentHour.minSize.height,
 			DetailsToday.minSize.height
 		]
 		
@@ -848,7 +894,7 @@ class HorizontalDetails( _Collection ):
 class VerticalDetails( _Collection ):
 	"""Displays a vertical block of price details for today and tomorrow."""
 	
-	minSize = Size( ( 14, 17 ) )
+	minSize = Size( ( 17, 17 ) )
 	_padding = Size( ( 1, 0 ) )
 	
 	def __init__( self, pos, options, parent=None ):
@@ -969,7 +1015,7 @@ class PriceDisplay( _SpacedCollection ):
 		minHorizontal = HorizontalDetails.minSize.width
 		
 		# maximal vertical size is the height of the graph and the height of the horizontal details
-		maxVertical =Graph.minSize.height + pad.height + HorizontalDetails.minSize.height
+		maxVertical = Graph.minSize.height + pad.height + HorizontalDetails.minSize.height
 		
 		verticalSize = Size( ( maxVertical, minHorizontal ) )
 		
