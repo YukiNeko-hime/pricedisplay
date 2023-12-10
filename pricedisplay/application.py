@@ -120,7 +120,6 @@ class App:
 		
 		self._dataAvailable = self._AvailableFromTime()
 		self._data.MidnightUpdate()
-		prices = self._data.GetPrices()
 		self._lastDataUpdate = now
 	
 	def _DailyDataUpdate( self, now ):

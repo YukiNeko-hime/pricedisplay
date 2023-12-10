@@ -26,30 +26,30 @@ class TemplateParsingError( Exception ):
 
 
 # data fetching and parsing related errors
-class NoDataError( Exception ):
-	pass
-
 class DataParsingError( Exception ):
 	pass
 
 class DataRequestError( Exception ):
 	pass
 
+class NoDataError( Exception ):
+	pass
+
 
 # display related errors
 class CollectionSizeError( Exception ):
 	pass
-		
-class WindowSizeError( Exception ):
-	def __init__( self, size ):
-		self.height = size[0]
-		self.width = size[1]
-		msg = 'Parent window is too small, display requires at least ' + str( self.height ) + ' lines and ' + str( self.width ) + ' cols'
-		Exception.__init__( self, msg )
 
 class WindowPositionError( Exception ):
 	def __init__( self, pos ):
 		self.y = pos[0]
 		self.x = pos[1]
 		msg = 'Display overflows the parent window, when positioned at ' + str( self.y ) + ', ' + str( self.x )
+		Exception.__init__( self, msg )
+		
+class WindowSizeError( Exception ):
+	def __init__( self, size ):
+		self.height = size[0]
+		self.width = size[1]
+		msg = 'Parent window is too small, display requires at least ' + str( self.height ) + ' lines and ' + str( self.width ) + ' cols'
 		Exception.__init__( self, msg )

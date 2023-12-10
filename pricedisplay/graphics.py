@@ -119,8 +119,8 @@ class _DisplayWindow:
 	
 	def __init__( self, size, pos, parent=None ):
 		self._boundingBox = bb = BBox( size, pos )
-		self._pos = pos
-		self._size = size
+		self._pos = Point( pos )
+		self._size = Size( size )
 		
 		self._FitsInside( bb, parent )
 		self._win = self._parent.subwin( *bb )
@@ -167,12 +167,12 @@ class _PriceDisplayWindow( _DisplayWindow ):
 		now = datetime.datetime.now()
 		utc = datetime.datetime.utcnow()
 		
-		timezone = now.hour - utc.hour
+		timezone = ( now.hour - utc.hour ) % 24
 		offset = timezone - self._normalTimezone
 		delta = hoursInDay - 24
 		
 		index = now.hour + (abs(delta) + delta)/2 - offset
-		index = int( index ) % 24
+		index = int( index )
 		
 		return index
 	
@@ -550,6 +550,14 @@ class _DetailWindow( _PriceDisplayWindow ):
 	def _AddDetail( self, name, price, linebreak=True, textStyle=None ):
 		"""Adds a detail with a name and price, formatted for the display."""
 		
+		if price != None:
+			self._AddExistingDetail( name, price, linebreak, textStyle )
+		else:
+			self._AddMissingDetail( name, linebreak )
+	
+	def _AddExistingDetail( self, name, price, linebreak=True, textStyle=None ):
+		"""Adds a detail with a name and price, formatted for the display."""
+		
 		win = self._win
 		n = name.ljust( 10 )
 		p = self._FormatPrice( price )
@@ -604,14 +612,10 @@ class DetailCurrentHour( _DetailWindow ):
 		
 		hours = len( prices.today )
 		index = self._CurrentHourIndex( hours )
-		
 		cur = prices.today[index]
 		
 		win.clear()
-		if cur != None:
-			self._AddDetail( 'current:', cur, False )
-		else:
-			self._AddMissingDetail( 'current:', False )
+		self._AddDetail( 'current:', cur, False )
 		win.refresh()
 
 class DetailNextHour( _DetailWindow ):
@@ -634,10 +638,7 @@ class DetailNextHour( _DetailWindow ):
 		next = nextPrices[index]
 		
 		win.clear()
-		if next != None:
-			self._AddDetail( 'next:', next, False )
-		else:
-			self._AddMissingDetail( 'next:', False )
+		self._AddDetail( 'next:', next, False )
 		win.refresh()
 
 class DetailsToday( _DetailWindow ):
@@ -656,13 +657,6 @@ class DetailsToday( _DetailWindow ):
 		self._AddDetail( 'average:', today.average )
 		self._AddDetail( 'lowest:', today.low, False )
 	
-	def _AddMissingPrices( self ):
-		"""Adds missing prices to the display, when data isn't available."""
-		
-		self._AddMissingDetail( 'highest:' )
-		self._AddMissingDetail( 'average:' )
-		self._AddMissingDetail( 'lowest:', False )
-	
 	def Update( self, prices ):
 		"""Updates the displayed prices."""
 		
@@ -670,12 +664,7 @@ class DetailsToday( _DetailWindow ):
 		
 		win.clear()
 		win.addstr( 'TODAY\n\n', curses.color_pair(4) )
-		
-		if prices.today:
-			self._AddPrices( prices )
-		else:
-			self._AddMissingPrices()
-		
+		self._AddPrices( prices )
 		win.refresh()
 
 class DetailsTomorrow( _DetailWindow ):
@@ -694,13 +683,6 @@ class DetailsTomorrow( _DetailWindow ):
 		self._AddDetail( 'average:', tomorrow.average )
 		self._AddDetail( 'lowest:', tomorrow.low, False )
 	
-	def _AddMissingPrices( self ):
-		"""Adds missing prices to the display, when data isn't available."""
-		
-		self._AddMissingDetail( 'highest:' )
-		self._AddMissingDetail( 'average:' )
-		self._AddMissingDetail( 'lowest:', False )
-	
 	def Update( self, prices ):
 		"""Updates the displayed prices."""
 		
@@ -708,12 +690,7 @@ class DetailsTomorrow( _DetailWindow ):
 		
 		win.clear()
 		win.addstr( 'TOMORROW\n\n', curses.color_pair(4) )
-		
-		if prices.tomorrow:
-			self._AddPrices( prices )
-		else:
-			self._AddMissingPrices()
-		
+		self._AddPrices( prices )
 		win.refresh()
 
 ###  collections of subwindows for structuring the screen  ###
@@ -727,7 +704,7 @@ class _Collection( _DisplayWindow ):
 	
 	def __init__( self, pos=( 0,0 ), size=( 0,0 ), padding=( 0,0 ), options={}, parent=None ):
 		self._options = options
-		self._padding = padding
+		self._padding = Size( padding )
 		self._subs = []
 		
 		_DisplayWindow.__init__( self, size, pos, parent )
@@ -735,17 +712,39 @@ class _Collection( _DisplayWindow ):
 	def _AddElements( self, elems, colSize=None, rowSize=None ):
 		"""Adds elements from an array."""
 		
-		y, x = pos = self._pos
-		pad = self._padding
+		self._rows = rows = len( elems )
+		self._cols = cols = len( elems[0] )
 		
-		rows = len( elems )
-		cols = len( elems[0] )
+		self._rowSize = rowSize
+		self._colSize = colSize
+		
+		self._VerifyLayout( rows, cols, rowSize, colSize )
+		
+		# add the elements from left to right and top to bottom
+		i = 0
+		pos = self._pos
+		while i < rows:
+			j = 0
+			while j < cols:
+				elem = elems[ i ][ j ]
+				if elem:
+					current = elem( pos, self._options, self._parent )
+					self._subs.append( current )
+				
+				pos = self._NextColumn( pos, current, j )
+				j += 1
+			
+			pos = self._NextRow( pos, current, i )
+			i += 1
+	
+	def _VerifyLayout( self, rows, cols, rowSize, colSize ):
+		"""Verify that the given rows and columns fit within the collection."""
 		
 		if rowSize:
 			if not len( rowSize ) == rows:
 				raise CollectionSizeError( 'The number of element rows and row sizes is not the same' )
 			
-			height = sum( rowSize ) + ( rows - 1 ) * pad.height
+			height = sum( rowSize ) + ( rows - 1 ) * self._padding.height
 			if height > self._size.height:
 				raise CollectionSizeError( "Can't fit the rows in the collection" )
 		
@@ -753,40 +752,33 @@ class _Collection( _DisplayWindow ):
 			if not len( colSize ) == cols:
 				raise CollectionSizeError( 'The number of element columns and column sizes is not the same' )
 			
-			width = sum( colSize ) + ( cols - 1 ) * pad.width
+			width = sum( colSize ) + ( cols - 1 ) * self._padding.width
 			if width > self._size.width:
 				raise CollectionSizeError( "Can't fit the columns in the collection" )
+	
+	def _NextColumn( self, pos, elem, j ):
+		"""Find the position for the next element in the row."""
 		
-		# add the elements from left to right and top to bottom
-		i = 0
-		while i < rows:
-			j = 0
-			while j < cols:
-				elem = elems[ i ][ j ]
-				current = elem( pos, self._options, self._parent )
-				self._subs.append( current )
-				
-				if elem:
-					current = elem( pos, self._options, self._parent )
-					bb = current.GetBoundingBox()
-					self._subs.append( current )
-					
-					if colSize:
-						pos = ( pos[0], pos[1] + colSize[ j ] + pad.width )
-					else:
-						pos = ( pos[0], bb.right + pad.width )
-				
-				elif colSize:
-					pos = ( pos[0], pos[1] + colSize[ j ] + pad.width )
-				
-				j += 1
-			
-			if rowSize:
-				pos = ( pos[0] + rowSize[i] + pad.height, x )
-			else:
-				pos = ( bb.bottom + pad.height, x )
-			
-			i += 1
+		if self._colSize:
+			width = self._colSize[ j ]	
+		elif elem:
+			bb = elem.GetBoundingBox()
+			width = bb.width
+		
+		pos = ( pos.y, pos.x + width + self._padding.width )
+		return Point( pos )
+	
+	def _NextRow( self, pos, elem, i ):
+		"""Find the position for the next element in the column."""
+		
+		if self._rowSize:
+			height = self._rowSize[i]
+		elif elem:
+			bb = elem.GetBoundingBox()
+			height = bb.height
+		
+		pos = ( pos.y + height + self._padding.height, self._pos.x )
+		return Point( pos )
 	
 	def Update( self, prices ):
 		"""Updates the display."""
@@ -805,6 +797,7 @@ class _SpacedCollection( _Collection ):
 		size = Size( size )
 		margin = Size( margin )
 		padding = Size( padding )
+		
 		# check that the content fits in the parent window with the specified margin
 		paddedSize = ( 2*margin.height + size.height, 2*margin.width + size.width )
 		bb = BBox( paddedSize, pos )
