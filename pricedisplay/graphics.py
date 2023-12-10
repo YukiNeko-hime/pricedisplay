@@ -521,6 +521,10 @@ class Graph( _PriceDisplayWindow ):
 				if price < 0:
 					posPrices.append( None )
 					negPrices.append( price )
+				
+				if price == 0:
+					posPrices.append( None )
+					negPrices.append( None )
 		
 		return posPrices, negPrices
 	
