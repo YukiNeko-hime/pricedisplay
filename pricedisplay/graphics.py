@@ -7,7 +7,7 @@ import sparklines
 import warnings
 
 from .exceptions import MissingOptionError
-from .exceptions import WindowSizeError, WindowPositionError
+from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
 __version__ = '0.4.4'
 
@@ -758,7 +758,7 @@ class _Collection( _DisplayWindow ):
 		
 		_DisplayWindow.__init__( self, size, pos, parent )
 	
-	def _AddElements( self, elems ):
+	def _AddElements( self, elems, colSize=None, rowSize=None ):
 		"""Adds elements from an array."""
 		
 		y, x = pos = self._pos
@@ -766,6 +766,22 @@ class _Collection( _DisplayWindow ):
 		
 		rows = len( elems )
 		cols = len( elems[0] )
+		
+		if rowSize:
+			if not len( rowSize ) == rows:
+				raise CollectionSizeError( 'The number of element rows and row sizes is not the same' )
+			
+			height = sum( rowSize ) + ( rows - 1 ) * pad.height
+			if height > self._size.height:
+				raise CollectionSizeError( "Can't fit the rows in the collection" )
+		
+		if colSize:
+			if not len( colSize ) == cols:
+				raise CollectionSizeError( 'The number of element columns and column sizes is not the same' )
+			
+			width = sum( colSize ) + ( cols - 1 ) * pad.width
+			if width > self._size.width:
+				raise CollectionSizeError( "Can't fit the columns in the collection" )
 		
 		# add the elements from left to right and top to bottom
 		i = 0
@@ -776,12 +792,26 @@ class _Collection( _DisplayWindow ):
 				current = elem( pos, self._options, self._parent )
 				self._subs.append( current )
 				
-				bb = current.GetBoundingBox()
-				pos = ( pos[0], bb.right + pad.width )
+				if elem:
+					current = elem( pos, self._options, self._parent )
+					bb = current.GetBoundingBox()
+					self._subs.append( current )
+					
+					if colSize:
+						pos = ( pos[0], pos[1] + colSize[ j ] + pad.width )
+					else:
+						pos = ( pos[0], bb.right + pad.width )
+				
+				elif colSize:
+					pos = ( pos[0], pos[1] + colSize[ j ] + pad.width )
 				
 				j += 1
 			
-			pos = ( pad.height + bb.bottom, x )
+			if rowSize:
+				pos = ( pos[0] + rowSize[i] + pad.height, x )
+			else:
+				pos = ( bb.bottom + pad.height, x )
+			
 			i += 1
 	
 	def Update( self, prices ):
@@ -841,7 +871,12 @@ class HorizontalDetails( _Collection ):
 				[ DetailsToday, DetailsTomorrow ]
 			]
 		
-		self._AddElements( elems )
+		rows = [
+			NextDetails.minSize.height,
+			DetailsToday.minSize.height
+		]
+		
+		self._AddElements( elems, rowSize=rows )
 
 class VerticalDetails( _Collection ):
 	"""Displays a vertical block of price details for today and tomorrow."""

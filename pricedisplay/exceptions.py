@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-__version__ = '0.4.4'
+__version__ = '0.5.0'
 
 # general errors
 class MissingOptionError( Exception ):
@@ -37,6 +37,9 @@ class DataRequestError( Exception ):
 
 
 # display related errors
+class CollectionSizeError( Exception ):
+	pass
+		
 class WindowSizeError( Exception ):
 	def __init__( self, size ):
 		self.height = size[0]
