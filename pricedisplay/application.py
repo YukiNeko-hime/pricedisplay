@@ -8,7 +8,7 @@ import time
 import traceback
 
 from .configparser import Config
-from .datahandler import PriceData
+from .datahandler import PriceDataHandler
 from .graphics import PriceDisplay
 
 from .exceptions import *
@@ -68,7 +68,7 @@ class App:
 		stdscr = curses.initscr()
 		self._display = PriceDisplay( ( 0,0 ), displayOptions, parent=stdscr )
 		
-		self._data = PriceData( dataOptions )
+		self._data = PriceDataHandler( dataOptions )
 	
 	def _EndCurses( self ):
 		"""Reverse terminal settings."""

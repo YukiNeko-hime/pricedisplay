@@ -486,16 +486,14 @@ class Graph( _PriceDisplayWindow ):
 	def _GetVisiblePrices( self, priceData ):
 		"""Gets the prices, which are visible taking into account dst and the number of past hours to show. Returns a list of the visible prices."""
 		
-		yesterday, today, tomorrow = priceData
-		
-		prices = yesterday + today + tomorrow
+		prices = priceData.all
 		pastHours = self._pastHours
 		curHour = pastHours + 1
 		
-		hours = len( today )
+		hours = len( priceData.today )
 		index = self._CurrentHourIndex( hours )
 		
-		start = len( yesterday ) + index - pastHours
+		start = len( priceData.yesterday ) + index - pastHours
 		end = start + self._size.width - 1
 		
 		visiblePrices = prices[ start : end ]
@@ -604,11 +602,10 @@ class DetailCurrentHour( _DetailWindow ):
 		
 		win = self._win
 		
-		today = prices[1]
-		hours = len( today )
+		hours = len( prices.today )
 		index = self._CurrentHourIndex( hours )
 		
-		cur = today[index]
+		cur = prices.today[index]
 		
 		win.clear()
 		if cur != None:
@@ -630,13 +627,10 @@ class DetailNextHour( _DetailWindow ):
 		
 		win = self._win
 		
-		today = prices[1]
-		tomorrow = prices[2]
-		
-		hours = len( today )
+		hours = len( prices.today )
 		index = self._CurrentHourIndex( hours ) + 1
 		
-		nextPrices = today + tomorrow
+		nextPrices = prices.today + prices.tomorrow
 		next = nextPrices[index]
 		
 		win.clear()
@@ -657,20 +651,10 @@ class DetailsToday( _DetailWindow ):
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
-		# filter out None for comparing prices
-		filteredPrices = []
-		for price in prices[1]:
-			if price != None:
-				filteredPrices.append( price )
-		
-		low = min( filteredPrices )
-		high = max( filteredPrices )
-		average = sum( filteredPrices ) / len( filteredPrices )
-		average = round( average, 2 )
-		
-		self._AddDetail ('highest:', high )
-		self._AddDetail( 'average:', average )
-		self._AddDetail( 'lowest:', low, False )
+		today = prices.today
+		self._AddDetail ('highest:', today.high )
+		self._AddDetail( 'average:', today.average )
+		self._AddDetail( 'lowest:', today.low, False )
 	
 	def _AddMissingPrices( self ):
 		"""Adds missing prices to the display, when data isn't available."""
@@ -687,8 +671,8 @@ class DetailsToday( _DetailWindow ):
 		win.clear()
 		win.addstr( 'TODAY\n\n', curses.color_pair(4) )
 		
-		if prices[1][0]:
-			self._AddPrices(prices)
+		if prices.today:
+			self._AddPrices( prices )
 		else:
 			self._AddMissingPrices()
 		
@@ -705,20 +689,10 @@ class DetailsTomorrow( _DetailWindow ):
 	def _AddPrices( self, prices ):
 		"""Adds prices to the display."""
 		
-		# filter out None for comparing prices
-		filteredPrices = []
-		for price in prices[2]:
-			if price != None:
-				filteredPrices.append( price )
-		
-		low = min( filteredPrices )
-		high = max( filteredPrices )
-		average = sum( filteredPrices ) / len( filteredPrices )
-		average = round( average, 2 )
-		
-		self._AddDetail( 'highest:', high )
-		self._AddDetail( 'average:', average )
-		self._AddDetail( 'lowest:', low, False )
+		tomorrow = prices.tomorrow
+		self._AddDetail( 'highest:', tomorrow.high )
+		self._AddDetail( 'average:', tomorrow.average )
+		self._AddDetail( 'lowest:', tomorrow.low, False )
 	
 	def _AddMissingPrices( self ):
 		"""Adds missing prices to the display, when data isn't available."""
@@ -735,7 +709,7 @@ class DetailsTomorrow( _DetailWindow ):
 		win.clear()
 		win.addstr( 'TOMORROW\n\n', curses.color_pair(4) )
 		
-		if prices[2][0]:
+		if prices.tomorrow:
 			self._AddPrices( prices )
 		else:
 			self._AddMissingPrices()

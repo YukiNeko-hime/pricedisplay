@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 
-import copy
 import datetime
 import json
 import requests
@@ -9,9 +8,86 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.4.3'
+__version__ = '0.5.0'
 
 class PriceData:
+	"""Represents the price data and its statistics."""
+	
+	_hasData = False
+	low = None
+	high = None
+	average = None
+	
+	def __init__( self, prices ):
+		self._data = prices		
+		
+		# filter out None for comparing prices
+		filtered = []
+		for price in prices:
+			if price != None:
+				filtered.append( price )
+		
+		if filtered:
+			self._hasData = True
+			
+			self.low = min( filtered )
+			self.high = max( filtered )
+			average = sum( filtered ) / len( filtered )
+			self.average = round( average, 2 )
+	
+	def __add__( self, obj ):
+		return PriceData( self._data + obj._data )
+	
+	def __bool__( self ):
+		return self._hasData
+	
+	def __getitem__( self, val ):
+		if type( val ) == int:
+			return self._data[val]
+		else:
+			data = self._data[val]
+			return PriceData( data )
+	
+	def __len__( self ):
+		return len( self._data )
+	
+	def __str__( self ):
+		return str( self._data )
+
+class DailyData:
+	"""Represents the price data for yesterday, today, and tomorrow."""
+	
+	def __init__( self, yesterday, today, tomorrow ):
+		self._data = [ yesterday, today, tomorrow ]
+		
+		self.yesterday = PriceData( yesterday )
+		self.today = PriceData( today )
+		self.tomorrow = PriceData( tomorrow )
+		
+		self.all = PriceData( yesterday + today + tomorrow )
+	
+	def __eq__( self, other ):
+		return self._data == other._data
+	
+	def __getitem__( self, index ):
+		return self._data[index]
+	
+	def __len__( self ):
+		return len( self._data )
+	
+	def __str__( self ):
+		return str( self._data )
+	
+	def Copy( self ):
+		"""Copies the data to a new object, so it cannot be replaced."""
+		
+		yesterday = self._data[0].copy()
+		today = self._data[1].copy()
+		tomorrow = self._data[2].copy()
+		
+		return DailyData( yesterday, today, tomorrow )
+
+class PriceDataHandler:
 	"""Retrieves, parses and updates the price data from the specified source."""
 	
 	_prices = None
@@ -26,7 +102,7 @@ class PriceData:
 		except KeyError as err:
 			raise MissingOptionError( err.args )
 		
-		self._prices = [ 24*[None], 24*[None], 24*[None] ]
+		self._prices = DailyData( 24*[None], 24*[None], 24*[None] )
 		
 		today = datetime.datetime.today()
 		self._day = today.day
@@ -105,7 +181,7 @@ class PriceData:
 		pricesTomorrow = self._ConvertToPriceList( dataTomorrow )
 		pricesYesterday = self._ConvertToPriceList( dataYesterday )
 		
-		self._prices = [ pricesYesterday, pricesToday, pricesTomorrow ]
+		self._prices = DailyData( pricesYesterday, pricesToday, pricesTomorrow )
 	
 	def _ParseObject( self, obj ):
 		"""Parses a json object to a datetime object and a two decimal price in cents."""
@@ -206,13 +282,13 @@ class PriceData:
 	def GetPrices( self ):
 		"""Returns the prices for yesterday, today, and tomorrow. Makes a deepcopy of the internal data structure to prevent accidental overwriting of the data."""
 		
-		return copy.deepcopy( self._prices )
+		return self._prices.Copy()
 	
 	def MidnightUpdate( self ):
 		"""Updates the data at midnight. Moves todays data to yesterday and tomorrows data to today."""
 		
 		trash, yesterday, today = self._prices
-		self._prices = [ yesterday, today, 24*[None] ]
+		self._prices = DailyData( yesterday, today, 24*[None] )
 	
 	def Update(self):
 		"""Retrieves new data from the source."""
