@@ -13,7 +13,7 @@ from .graphics import PriceDisplay
 
 from .exceptions import *
 
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 
 _debug = 0
 
@@ -132,12 +132,12 @@ class App:
 		
 		prices = self._data.GetPrices()
 		
-		if None in prices[2]:
+		if not prices.tomorrow:
 			self._data.Update()
 			prices = self._data.GetPrices()
 			self._lastDataUpdate = now
 			
-			if not ( None in prices[2] ):
+			if prices.tomorrow:
 				self._display.Update( prices )
 				self._lastDisplayUpdate = now
 	
