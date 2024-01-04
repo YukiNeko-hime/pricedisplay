@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -620,70 +620,25 @@ class _DetailWindow( _PriceDisplayWindow ):
 		else:
 			return var
 
-class DetailCurrentHour( _DetailWindow ):
+class DetailsCurrent( _DetailWindow ):
 	"""Displays the price for the current hour."""
 	
-	minSize = Size( ( 1, 17 ) )
+	minSize = Size( ( 3, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
-	
-	def Update(self, prices):
-		"""Updates the displayed price."""
-		
-		win = self._win
-		
-		hours = len( prices.today )
-		index = self._CurrentHourIndex( hours )
-		cur = prices.today[index]
-		
-		win.clear()
-		self._AddDetail( 'current:', cur, False )
-		win.refresh()
-
-class DetailNextHour( _DetailWindow ):
-	"""Displays the price for the current hour."""
-	
-	minSize = Size( ( 1, 17 ) )
-	
-	def __init__( self, pos, options, parent=None ):
-		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
-	
-	def Update( self, prices ):
-		"""Updates the displayed price."""
-		
-		win = self._win
-		
-		hours = len( prices.today )
-		index = self._CurrentHourIndex( hours ) + 1
-		
-		nextPrices = prices.today + prices.tomorrow
-		next = nextPrices[index]
-		
-		win.clear()
-		self._AddDetail( 'next:', next, False )
-		win.refresh()
-
-class DetailsToday( _DetailWindow ):
-	"""Displays the lowest, highest, and average price for today."""
-	
-	minSize = Size( ( 7, 17 ) )
-	
-	def __init__( self, pos, options, parent=None ):
-		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
-	
-	def _AddPrices( self, prices ):
-		"""Adds prices to the display."""
-		
-		today = prices.today
-		self._AddDetail ('highest:', today.high )
-		self._AddDetail( 'average:', today.average )
-		self._AddDetail( 'lowest:', today.low )
 	
 	def _AddDayAverage( self, prices ):
 		start, end = self._day
 		day = prices.today[ start : end ]
-		self._AddDetail( 'day:', day.average )
+		self._AddDetail( 'day:', day.average, False )
+	
+	def _AddHour( self, prices ):
+		hours = len( prices.today )
+		index = self._CurrentHourIndex( hours )
+		cur = prices.today[index]
+		
+		self._AddDetail( 'hour:', cur )
 	
 	def _AddNightAverage( self, prices ):
 		now = datetime.datetime.now()
@@ -695,22 +650,117 @@ class DetailsToday( _DetailWindow ):
 		
 		self._AddDetail( 'night:', night.average, False )
 	
+	def Update(self, prices):
+		"""Updates the displayed price."""
+		
+		now = datetime.datetime.now()
+		start, end = self._day
+		win = self._win
+		win.clear()
+		
+		win.addstr( 'CURRENT\n', curses.color_pair(4) )
+		self._AddHour( prices )
+		if start <= now.hour and now.hour < end:
+			self._AddDayAverage( prices )
+		else:
+			self._AddNightAverage( prices )
+		
+		win.refresh()
+
+class DetailsNext( _DetailWindow ):
+	"""Displays the price for the current hour."""
+	
+	minSize = Size( ( 4, 17 ) )
+	
+	def __init__( self, pos, options, parent=None ):
+		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
+	
+	def _AddAverages( self, prices ):
+		win = self._win
+		start, end = self._day
+		now = datetime.datetime.now()
+		if start <= now.hour and now.hour < end:
+			self._AddNightAverage( prices )
+			win.addstr( '\n' )
+			self._AddDayAverage( prices )
+		
+		else:
+			self._AddDayAverage( prices )
+			win.addstr( '\n' )
+			self._AddNightAverage( prices )
+	
+	def _AddDayAverage( self, prices ):
+		start, end = self._day
+		now = datetime.datetime.now()
+		if prices.tomorrow:
+			day = prices.tomorrow[ start : end ]
+			self._AddDetail( 'day:', day.average, False )
+		
+		elif now.hour < start:
+			day = prices.today[ start : end ]
+			self._AddDetail( 'day:', day.average, False )
+		
+		else:
+			self._AddMissingDetail( 'day:', False )
+	
+	def _AddHour( self, prices ):
+		hours = len( prices.today )
+		index = self._CurrentHourIndex( hours ) + 1
+		
+		nextPrices = prices.today + prices.tomorrow
+		next = nextPrices[index]
+		
+		self._AddDetail( 'hour:', next )
+	
+	def _AddNightAverage( self, prices ):
+		start, end = self._night
+		now = datetime.datetime.now()
+		if prices.tomorrow and now.hour < start:
+			night = prices.today[ start : ] + prices.tomorrow[ : end ]
+			self._AddDetail( 'night:', night.average, False )
+		
+		else:
+			self._AddMissingDetail( 'night', False )
+	
+	def Update( self, prices ):
+		"""Updates the displayed price."""
+		
+		win = self._win
+		win.clear()
+		win.addstr( 'NEXT\n', curses.color_pair(4) )
+		self._AddHour( prices )
+		self._AddAverages( prices )
+		win.refresh()
+
+class DetailsToday( _DetailWindow ):
+	"""Displays the lowest, highest, and average price for today."""
+	
+	minSize = Size( ( 4, 17 ) )
+	
+	def __init__( self, pos, options, parent=None ):
+		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
+	
+	def _AddPrices( self, prices ):
+		"""Adds prices to the display."""
+		
+		today = prices.today
+		self._AddDetail ('highest:', today.high )
+		self._AddDetail( 'average:', today.average )
+		self._AddDetail( 'lowest:', today.low, False )
+	
 	def Update( self, prices ):
 		"""Updates the displayed prices."""
 		
 		win = self._win
-		
 		win.clear()
-		win.addstr( 'TODAY\n\n', curses.color_pair(4) )
+		win.addstr( 'TODAY\n', curses.color_pair(4) )
 		self._AddPrices( prices )
-		self._AddDayAverage( prices )
-		self._AddNightAverage( prices )
 		win.refresh()
 
 class DetailsTomorrow( _DetailWindow ):
 	"""Displays the lowest, highest, and average price for tomorrow."""
 	
-	minSize = Size( ( 6, 17 ) )
+	minSize = Size( ( 4, 17 ) )
 	
 	def __init__( self, pos, options, parent=None ):
 		_DetailWindow.__init__( self, pos, self.minSize, options, parent )
@@ -721,22 +771,15 @@ class DetailsTomorrow( _DetailWindow ):
 		tomorrow = prices.tomorrow
 		self._AddDetail( 'highest:', tomorrow.high )
 		self._AddDetail( 'average:', tomorrow.average )
-		self._AddDetail( 'lowest:', tomorrow.low )
-	
-	def _AddDayAverage( self, prices ):
-		start, end = self._day
-		day = prices.tomorrow[ start : end ]
-		self._AddDetail( 'day:', day.average, False )
+		self._AddDetail( 'lowest:', tomorrow.low, False )
 	
 	def Update( self, prices ):
 		"""Updates the displayed prices."""
 		
 		win = self._win
-		
 		win.clear()
-		win.addstr( 'TOMORROW\n\n', curses.color_pair(4) )
+		win.addstr( 'TOMORROW\n', curses.color_pair(4) )
 		self._AddPrices( prices )
-		self._AddDayAverage( prices )
 		win.refresh()
 
 ###  collections of subwindows for structuring the screen  ###
@@ -856,20 +899,6 @@ class _SpacedCollection( _Collection ):
 		
 		_Collection.__init__( self, pos, size, padding, options, parent )
 
-class HourDetails( _Collection ):
-	minSize = Size( ( 2, 17 ) )
-	_padding = Size( ( 0, 0 ) )
-	
-	def __init__( self, pos, options, parent=None ):
-		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
-		
-		elems = [
-				[ DetailCurrentHour ],
-				[ DetailNextHour ]
-			]
-		
-		self._AddElements( elems )
-
 class HorizontalDetails( _Collection ):
 	"""Displays a horzontal block of price details for today and tomorrow."""
 	
@@ -880,13 +909,18 @@ class HorizontalDetails( _Collection ):
 		_Collection.__init__( self, pos, self.minSize, self._padding, options, parent )
 		
 		elems = [
-				[ DetailCurrentHour, DetailNextHour ],
+				[ DetailsCurrent, DetailsNext ],
 				[ DetailsToday, DetailsTomorrow ]
 			]
 		
+		height = max(
+			DetailsCurrent.minSize.height,
+			DetailsNext.minSize.height
+		)
+		
 		rows = [
-			DetailCurrentHour.minSize.height,
-			DetailsToday.minSize.height
+			height,
+			DetailsTomorrow.minSize.height
 		]
 		
 		self._AddElements( elems, rowSize=rows )
@@ -894,7 +928,7 @@ class HorizontalDetails( _Collection ):
 class VerticalDetails( _Collection ):
 	"""Displays a vertical block of price details for today and tomorrow."""
 	
-	minSize = Size( ( 17, 17 ) )
+	minSize = Size( ( 18, 17 ) )
 	_padding = Size( ( 1, 0 ) )
 	
 	def __init__( self, pos, options, parent=None ):
@@ -902,7 +936,8 @@ class VerticalDetails( _Collection ):
 		
 		# add all the elements from top down in one column
 		elems = [
-				[ HourDetails ],
+				[ DetailsCurrent ],
+				[ DetailsNext ],
 				[ DetailsToday ],
 				[ DetailsTomorrow ]
 			]
