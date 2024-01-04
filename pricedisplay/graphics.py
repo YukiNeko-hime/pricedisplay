@@ -998,13 +998,13 @@ class PriceDisplay( _SpacedCollection ):
 			layout = 'vertical'
 			size = verticalSize
 		
-		elif canUseVertical:
-			layout = 'vertical'
-			size = verticalSize
-		
 		elif canUseHorizontal:
 			layout = 'horizontal'
 			size = horizontalSize
+		
+		elif canUseVertical:
+			layout = 'vertical'
+			size = verticalSize
 		
 		else:
 			layout = 'minimal'
