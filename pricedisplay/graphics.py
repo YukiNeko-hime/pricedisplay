@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.5.1'
+__version__ = '0.5.2'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -167,12 +167,17 @@ class _PriceDisplayWindow( _DisplayWindow ):
 		now = datetime.datetime.now()
 		utc = datetime.datetime.utcnow()
 		
-		timezone = ( now.hour - utc.hour ) % 24
-		offset = timezone - self._normalTimezone
-		delta = hoursInDay - 24
+		# account for dst change
+		if hoursInDay != 24:
+			timezone = ( now.hour - utc.hour ) % 24
+			offset = timezone - self._normalTimezone
 		
-		index = now.hour + (abs(delta) + delta)/2 - offset
-		index = int( index )
+			delta = hoursInDay - 24
+			index = now.hour + (abs(delta) + delta)/2 - offset
+			index = int( index )
+		
+		else:
+			index = int( now.hour )
 		
 		return index
 	
