@@ -13,7 +13,7 @@ from .graphics import PriceDisplay
 
 from .exceptions import *
 
-__version__ = '0.5.1'
+__version__ = '0.5.3'
 
 _debug = 0
 
@@ -133,9 +133,14 @@ class App:
 		prices = self._data.GetPrices()
 		
 		if not prices.tomorrow:
-			self._data.Update()
-			prices = self._data.GetPrices()
-			self._lastDataUpdate = now
+			try:
+				self._data.Update()
+				prices = self._data.GetPrices()
+				self._lastDataUpdate = now
+			
+			# catch any request errors and try again later
+			except DataRequestError:
+				pass
 			
 			if prices.tomorrow:
 				self._display.Update( prices )
