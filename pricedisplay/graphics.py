@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -204,7 +204,8 @@ class Graph( _PriceDisplayWindow ):
 	_defaultOptions = {
 		'height': minSize.height,
 		'width': minSize.width,
-		'carets': [ '▼', '▲' ],
+		'carets': ( '▼', '▲' ),
+		'extremes': ( '∨', '∧' ),
 		'pastHours': 8
 	}
 	
@@ -213,6 +214,7 @@ class Graph( _PriceDisplayWindow ):
 		opts.update( options )
 		
 		self._carets = opts['carets']
+		self._extremes = opts['extremes']
 		pastHours = opts['pastHours']
 		width = opts['width']
 		
@@ -230,6 +232,18 @@ class Graph( _PriceDisplayWindow ):
 		size = Size( ( h, w ) )
 		_PriceDisplayWindow.__init__(self, size, pos, options, parent)
 	
+	def _AddPadding( self, lines ):
+		"""Adds carets to indicate the current hour in the sparklines."""
+		
+		pos, neg = lines
+		hours = len( ( pos + neg )[0] )
+		
+		# add an empty line to the beginning and end to always fit the carets
+		pos = [ ' '*hours ] + pos
+		neg = neg + [ ' '*hours ]
+		
+		return pos, neg
+	
 	def _AddCarets( self, lines ):
 		"""Adds carets to indicate the current hour in the sparklines."""
 		
@@ -239,29 +253,39 @@ class Graph( _PriceDisplayWindow ):
 		curHour = pastHours + 1
 		hours = len( ( pos + neg )[0] )
 		
-		# add an empty line to the beginning and end to always fit the carets
-		# if there are no lines, include the caret on the line
-		if pos:
-			pos = [ ' '*hours ] + pos
-			pos = self._AddUpperCaret( pos )
-		else:
-			pos = [ ' '*pastHours + carets[0] + ' '*(hours - curHour) ]
-		
-		if neg:
-			neg = neg + [ ' '*hours ]
-			neg = self._AddLowerCaret( neg )
-		else:
-			neg = [ ' '*pastHours + carets[1] + ' '*(hours - curHour) ]
+		pos = self._AddUpperCaret( pos )
+		neg = self._AddLowerCaret( neg )
 		
 		return pos, neg
 	
 	def _AddLowerCaret( self, lines ):
 		"""Add the lower caret to the given lines."""
 		
-		carets = self._carets
-		curHour = self._pastHours
+		symbol = self._carets[1]
+		hour = self._pastHours
+		lines = self._AddSymbolBelow( lines, hour, symbol )
 		
-		# find the lowest possible position for the upper caret, searching from bottom up
+		return lines
+	
+	def _AddUpperCaret( self, lines ):
+		"""Add the upper caret to the given lines."""
+		
+		symbol = self._carets[0]
+		hour = self._pastHours
+		lines = self._AddSymbolAbove( lines, hour, symbol )
+		
+		return lines
+	
+	def _AddSymbolBelow( self, lines, hour, symbol ):
+		"""Finds the lowest possible position for the upper caret, searching from bottom up."""
+		
+		if not 0 <= hour < len( lines[0] ):
+			return lines
+		
+		if len( lines ) == 1:
+			lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
+			return lines
+		
 		i = iMax = len( lines ) - 2
 		while i > 0:
 			prev = lines[i + 1]
@@ -269,21 +293,21 @@ class Graph( _PriceDisplayWindow ):
 			next = lines[i - 1]
 			
 			# first possible line for the lower caret, if negative price extends all the way down
-			if i == iMax and cur[ curHour ] != ' ' and next[ curHour ] == ' ':
-				lowerCaretLine = prev[ : curHour ] + carets[1] + prev[ curHour+1 : ]
+			if i == iMax and cur[ hour ] != ' ' and next[ hour ] == ' ':
+				lowerCaretLine = prev[ : hour ] + symbol + prev[ hour+1 : ]
 				lines[i + 1] = lowerCaretLine
 				break
 			
 			# first empty space under negative sparkline on current hour
-			if prev[ curHour ] != ' ' and cur[ curHour ] != ' ' and next[ curHour ] == ' ':
-				lowerCaretLine = prev[ : curHour ] + carets[1] + prev[ curHour+1 : ]
+			if prev[ hour ] != ' ' and cur[ hour ] != ' ' and next[ hour ] == ' ':
+				lowerCaretLine = prev[ : hour ] + symbol + prev[ hour+1 : ]
 				lines[i + 1] = lowerCaretLine
 				break
 			
 			# last possible line for the lower caret, if price is positive
 			# the character is empty, because the value for the price is None
-			if i == 1 and next[ curHour ] == ' ':
-				lowerCaretLine = next[ : curHour ] + carets[1] + next[ curHour+1 : ]
+			if i == 1 and next[ hour ] == ' ':
+				lowerCaretLine = next[ : hour ] + symbol + next[ hour+1 : ]
 				lines[0] = lowerCaretLine
 				break
 			
@@ -291,33 +315,78 @@ class Graph( _PriceDisplayWindow ):
 		
 		return lines
 	
-	def _AddUpperCaret( self, lines ):
-		"""Add the upper caret to the given lines."""
+	def _AddSymbolAbove( self, lines, hour, symbol ):
+		"""Finds the highest possible position for the symbol, searching from top down."""
 		
-		carets = self._carets
-		curHour = self._pastHours
+		if not 0 <= hour < len( lines[0] ):
+			return lines
 		
-		# find the highest possible position for the upper caret, searching from top down
+		if len( lines ) == 1:
+			lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
+			return lines
+		
 		i = 0
 		while i < len( lines ) - 1:
 			line = lines[i]
 			next = lines[i + 1]
 			
 			# last empty space for the upper caret, if price is positive
-			if line[ curHour ] == ' ' and next[ curHour ] != ' ':
-				upperCaretLine = line[ : curHour ] + carets[0] + line[ curHour+1 : ]
+			if line[ hour ] == ' ' and next[ hour ] != ' ':
+				upperCaretLine = line[ : hour ] + symbol + line[ hour+1 : ]
 				lines[i] = upperCaretLine
 				break
 			
 			# last possible line for the upper caret, if price is negative
-			if i == len( lines ) - 2 and next[ curHour ] == ' ':
-				upperCaretLine = next[ : curHour ] + carets[0] + next[ curHour+1 : ]
+			if i == len( lines ) - 2 and next[ hour ] == ' ':
+				upperCaretLine = next[ : hour ] + symbol + next[ hour+1 : ]
 				lines[-1] = upperCaretLine
 				break
 			
 			i += 1
 		
 		return lines
+	
+	def _AddLowestMarker( self, lines, priceData ):
+		"""Adds a marker for the lowest price today."""
+		
+		symbol = self._extremes[0]
+		pos, neg = lines
+		
+		low = priceData.today.low
+		hour = priceData.today.index( low )
+		
+		hoursInDay = len( priceData.today )
+		curHour = self._CurrentHourIndex( hoursInDay )
+		index = hour - curHour + self._pastHours
+		
+		if hour != curHour:
+			if low > 0:
+				pos = self._AddSymbolAbove( pos, index, symbol )
+			else:
+				neg = self._AddSymbolBelow( neg, index, symbol )
+		
+		return pos, neg
+	
+	def _AddHighestMarker( self, lines, priceData ):
+		"""Adds a marker for the lowest price today."""
+		
+		symbol = self._extremes[1]
+		pos, neg = lines
+		
+		high = priceData.today.high
+		hour = priceData.today.index( high )
+		
+		hoursInDay = len( priceData.today )
+		curHour = self._CurrentHourIndex( hoursInDay )
+		index = hour - curHour + self._pastHours
+		
+		if hour != curHour:
+			if high > 0:
+				pos = self._AddSymbolAbove( pos, index, symbol )
+			else:
+				neg = self._AddSymbolBelow( neg, index, symbol )
+		
+		return pos, neg
 	
 	def _AddLines( self, lines, colors, prices ):
 		"""Adds the sparklines and the lower caret line."""
@@ -339,11 +408,12 @@ class Graph( _PriceDisplayWindow ):
 		"""Adds negative lines to the graph."""
 		
 		win = self._win
+		symbols = self._carets + self._extremes
 		
 		for line in lines[:-1]:
 			for hour in range( len(line) ):
 				price = prices[hour]
-				if not line[hour] in self._carets and price != None and price < 0:
+				if line[hour] not in symbols and price != None and price < 0:
 					win.addstr( line[hour], colors[hour] | curses.A_REVERSE )
 				else:
 					win.addstr( line[hour] )
@@ -354,10 +424,11 @@ class Graph( _PriceDisplayWindow ):
 		"""Adds positive lines to the graph."""
 		
 		win = self._win
+		symbols = self._carets + self._extremes
 		
 		for line in lines[1:]:
 			for hour in range( len(line) ):
-				if not line[hour] in self._carets:
+				if line[hour] not in symbols:
 					win.addstr( line[hour], colors[hour] )
 				else:
 					win.addstr( line[hour] )
@@ -537,6 +608,9 @@ class Graph( _PriceDisplayWindow ):
 		win = self._win
 		visiblePrices = self._GetVisiblePrices( priceData )
 		lines = self._GetSparklines( visiblePrices )
+		lines = self._AddPadding( lines )
+		lines = self._AddHighestMarker( lines, priceData )
+		lines = self._AddLowestMarker( lines, priceData )
 		lines = self._AddCarets( lines )
 		colors = self._GetColors( visiblePrices )
 		
