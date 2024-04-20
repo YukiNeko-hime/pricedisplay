@@ -8,7 +8,7 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.5.0'
+__version__ = '0.5.3'
 
 class PriceData:
 	"""Represents the price data and its statistics."""
@@ -53,6 +53,9 @@ class PriceData:
 	
 	def __str__( self ):
 		return str( self._data )
+	
+	def index( self, *args, **kwargs ):
+		return self._data.index( *args, **kwargs )
 
 class DailyData:
 	"""Represents the price data for yesterday, today, and tomorrow."""
