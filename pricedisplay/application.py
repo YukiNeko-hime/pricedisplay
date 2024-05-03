@@ -47,6 +47,7 @@ class App:
 				options['caret.style.below']
 			)
 			
+			displayOptions['extremesVisible'] = options['extremes.visible']
 			displayOptions['extremes'] = (
 				options['extremes.style.lowest'],
 				options['extremes.style.highest']

@@ -79,6 +79,13 @@ caret:
             value: ▲
 
 extremes:
+    visible:
+        description: "Display markers for todays highest and lowest price."
+        essential: true
+        type: bool
+        question: Display markers for extremes?
+        value: false
+        
     style:
         highest:
             description: "The style of the marker for the highest price today in the graph."

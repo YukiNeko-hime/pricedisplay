@@ -206,6 +206,7 @@ class Graph( _PriceDisplayWindow ):
 		'width': minSize.width,
 		'carets': ( '▼', '▲' ),
 		'extremes': ( '∨', '∧' ),
+		'extremesVisible': False,
 		'pastHours': 8
 	}
 	
@@ -215,6 +216,7 @@ class Graph( _PriceDisplayWindow ):
 		
 		self._carets = opts['carets']
 		self._extremes = opts['extremes']
+		self._extremesVisible = opts['extremesVisible']
 		pastHours = opts['pastHours']
 		width = opts['width']
 		
@@ -609,8 +611,11 @@ class Graph( _PriceDisplayWindow ):
 		visiblePrices = self._GetVisiblePrices( priceData )
 		lines = self._GetSparklines( visiblePrices )
 		lines = self._AddPadding( lines )
-		lines = self._AddHighestMarker( lines, priceData )
-		lines = self._AddLowestMarker( lines, priceData )
+		
+		if self._extremesVisible:
+			lines = self._AddHighestMarker( lines, priceData )
+			lines = self._AddLowestMarker( lines, priceData )
+		
 		lines = self._AddCarets( lines )
 		colors = self._GetColors( visiblePrices )
 		
