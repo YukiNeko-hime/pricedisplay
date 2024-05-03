@@ -8,7 +8,7 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.5.3'
+__version__ = '0.6.0'
 
 class PriceData:
 	"""Represents the price data and its statistics."""
@@ -19,7 +19,7 @@ class PriceData:
 	average = None
 	
 	def __init__( self, prices ):
-		self._data = prices		
+		self._data = prices
 		
 		# filter out None for comparing prices
 		filtered = []

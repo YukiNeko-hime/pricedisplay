@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.5.3'
+__version__ = '0.6.0'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -280,47 +280,8 @@ class Graph( _PriceDisplayWindow ):
 		
 		return lines
 	
-	def _AddSymbolBelow( self, lines, hour, symbol ):
-		"""Finds the lowest possible position for the upper caret, searching from bottom up."""
-		
-		if not 0 <= hour < len( lines[0] ):
-			return lines
-		
-		if len( lines ) == 1:
-			lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
-			return lines
-		
-		i = iMax = len( lines ) - 2
-		while i > 0:
-			prev = lines[i + 1]
-			cur = lines[i]
-			next = lines[i - 1]
-			
-			# first possible line for the lower caret, if negative price extends all the way down
-			if i == iMax and cur[ hour ] != ' ' and next[ hour ] == ' ':
-				lowerCaretLine = prev[ : hour ] + symbol + prev[ hour+1 : ]
-				lines[i + 1] = lowerCaretLine
-				break
-			
-			# first empty space under negative sparkline on current hour
-			if prev[ hour ] != ' ' and cur[ hour ] != ' ' and next[ hour ] == ' ':
-				lowerCaretLine = prev[ : hour ] + symbol + prev[ hour+1 : ]
-				lines[i + 1] = lowerCaretLine
-				break
-			
-			# last possible line for the lower caret, if price is positive
-			# the character is empty, because the value for the price is None
-			if i == 1 and next[ hour ] == ' ':
-				lowerCaretLine = next[ : hour ] + symbol + next[ hour+1 : ]
-				lines[0] = lowerCaretLine
-				break
-			
-			i -= 1
-		
-		return lines
-	
 	def _AddSymbolAbove( self, lines, hour, symbol ):
-		"""Finds the highest possible position for the symbol, searching from top down."""
+		"""Finds the highest possible position for the symbol in positive lines, searching from top down."""
 		
 		if not 0 <= hour < len( lines[0] ):
 			return lines
@@ -334,19 +295,61 @@ class Graph( _PriceDisplayWindow ):
 			line = lines[i]
 			next = lines[i + 1]
 			
-			# last empty space for the upper caret, if price is positive
+			# last empty space for the symbol, if price is positive
 			if line[ hour ] == ' ' and next[ hour ] != ' ':
-				upperCaretLine = line[ : hour ] + symbol + line[ hour+1 : ]
-				lines[i] = upperCaretLine
+				symbolLine = line[ : hour ] + symbol + line[ hour+1 : ]
+				lines[i] = symbolLine
 				break
 			
-			# last possible line for the upper caret, if price is negative
-			if i == len( lines ) - 2 and next[ hour ] == ' ':
-				upperCaretLine = next[ : hour ] + symbol + next[ hour+1 : ]
-				lines[-1] = upperCaretLine
+			# last possible line for the symbol
+			if i == len( lines ) - 2:
+				symbolLine = next[ : hour ] + symbol + next[ hour+1 : ]
+				lines[-1] = symbolLine
 				break
 			
 			i += 1
+		
+		return lines
+	
+	def _AddSymbolBelow( self, lines, hour, symbol ):
+		"""Finds the lowest possible position for the symbol in negative lines, searching from bottom up."""
+		
+		if not 0 <= hour < len( lines[0] ):
+			return lines
+		
+		if len( lines ) == 1:
+			lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
+			return lines
+		
+		if len( lines ) == 2:
+			lines[1] = lines[1][ : hour ] + symbol + lines[1][ hour+1 : ]
+			return lines
+		
+		i = iMax = len( lines ) - 2
+		while i > 0:
+			prev = lines[i + 1]
+			cur = lines[i]
+			next = lines[i - 1]
+			
+			# first possible line for the symbol, if negative price extends all the way down
+			if i == iMax and cur[ hour ] != ' ' and next[ hour ] == ' ':
+				symbolLine = prev[ : hour ] + symbol + prev[ hour+1 : ]
+				lines[i + 1] = symbolLine
+				break
+			
+			# first empty space under negative sparkline on current hour
+			if prev[ hour ] != ' ' and cur[ hour ] != ' ' and next[ hour ] == ' ':
+				symbolLine = prev[ : hour ] + symbol + prev[ hour+1 : ]
+				lines[i + 1] = symbolLine
+				break
+			
+			# last possible line for the symbol
+			if i == 1:
+				symbolLine = next[ : hour ] + symbol + next[ hour+1 : ]
+				lines[0] = symbolLine
+				break
+			
+			i -= 1
 		
 		return lines
 	
@@ -363,6 +366,7 @@ class Graph( _PriceDisplayWindow ):
 		curHour = self._CurrentHourIndex( hoursInDay )
 		index = hour - curHour + self._pastHours
 		
+		# don't add the marker for current hour
 		if hour != curHour:
 			if low > 0:
 				pos = self._AddSymbolAbove( pos, index, symbol )
@@ -372,7 +376,7 @@ class Graph( _PriceDisplayWindow ):
 		return pos, neg
 	
 	def _AddHighestMarker( self, lines, priceData ):
-		"""Adds a marker for the lowest price today."""
+		"""Adds a marker for the highest price today."""
 		
 		symbol = self._extremes[1]
 		pos, neg = lines
@@ -384,6 +388,7 @@ class Graph( _PriceDisplayWindow ):
 		curHour = self._CurrentHourIndex( hoursInDay )
 		index = hour - curHour + self._pastHours
 		
+		# don't add the marker for current hour
 		if hour != curHour:
 			if high > 0:
 				pos = self._AddSymbolAbove( pos, index, symbol )
@@ -392,10 +397,10 @@ class Graph( _PriceDisplayWindow ):
 		
 		return pos, neg
 	
-	def _AddMissingMarker( self, lines, visiblePrices ):
-		"""Adds a marker for missing prices."""
-		pos, neg = lines
+	def _AddMissingSymbol( self, lines, visiblePrices ):
+		"""Adds a symbol for missing prices."""
 		
+		pos, neg = lines
 		hour = 0
 		while hour < len( visiblePrices ):
 			if visiblePrices[hour] == None:
@@ -639,7 +644,7 @@ class Graph( _PriceDisplayWindow ):
 			lines = self._AddHighestMarker( lines, priceData )
 			lines = self._AddLowestMarker( lines, priceData )
 		
-		lines = self._AddMissingMarker( lines, visiblePrices )
+		lines = self._AddMissingSymbol( lines, visiblePrices )
 		lines = self._AddCarets( lines )
 		colors = self._GetColors( visiblePrices )
 		

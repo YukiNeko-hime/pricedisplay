@@ -7,7 +7,7 @@ import yaml
 from .exceptions import ConfigParsingError
 from .exceptions import CorruptedTemplateError, MissingTemplateError, TemplateParsingError
 
-__version__ = '0.5.3'
+__version__ = '0.6.0'
 
 class _Queries:
 	def _YesNo( self, question ):
@@ -56,7 +56,7 @@ class _Queries:
 		
 		if type == 'char':
 			value = str( value )
-			if len(value) == 1:
+			if len( value ) == 1:
 				return value
 		
 		if type == 'float':
@@ -78,7 +78,7 @@ class _Queries:
 			try:
 				parts = value.split(':')
 				for part in parts:
-					int(part)
+					int( part )
 			except:
 				raise ValueError( 'Invalid value' )
 			
