@@ -47,6 +47,11 @@ class App:
 				options['caret.style.below']
 			)
 			
+			displayOptions['extremes'] = (
+				options['extremes.style.lowest'],
+				options['extremes.style.highest']
+			)
+			
 			displayOptions['limits'] = (
 				options['price.low'],
 				options['price.high']

@@ -77,6 +77,21 @@ caret:
             type: char
             question: Carot below graph?
             value: ▲
+
+extremes:
+    style:
+        highest:
+            description: "The style of the marker for the highest price today in the graph."
+            type: char
+            question: Highest price marker?
+            value: ∧
+        
+        lowest:
+            description: "The style of the marker for the lowest price today in the graph."
+            type: char
+            question: Lowest price marker?
+            value: ∨
+
 day:
     begins:
         description: "Day begins at this hour."
