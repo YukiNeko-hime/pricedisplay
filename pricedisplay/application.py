@@ -53,6 +53,8 @@ class App:
 				options['extremes.style.highest']
 			)
 			
+			displayOptions['missing'] = options['missing.style']
+			
 			displayOptions['limits'] = (
 				options['price.low'],
 				options['price.high']

@@ -99,6 +99,13 @@ extremes:
             question: Lowest price marker?
             value: ∨
 
+missing:
+    style:
+        description: "The style of the missing price symbol."
+        type: char
+        question: Missing price symbol?
+        value: "-"
+
 day:
     begins:
         description: "Day begins at this hour."

@@ -654,6 +654,7 @@ class _DetailWindow( _PriceDisplayWindow ):
 	
 	_day = [ 6, 22 ]
 	_night = [ 22, 6 ]
+	_missing = '-'
 	
 	def __init__( self, pos, size, options, parent=None ):
 		start, end = options['day']
@@ -663,6 +664,7 @@ class _DetailWindow( _PriceDisplayWindow ):
 		end = self._Normalize( end )
 		self._day = [ start, end ]
 		self._night = [ end, start ]
+		self._missing = options['missing']
 		
 		_PriceDisplayWindow.__init__(self, size, pos, options, parent)
 	
@@ -697,7 +699,7 @@ class _DetailWindow( _PriceDisplayWindow ):
 		
 		win = self._win
 		n = name.ljust( 10 )
-		p = '-'.rjust( 6 )
+		p = self._missing.rjust( 6 )
 		
 		win.addstr( n )
 		win.addstr( p, curses.A_BOLD )
