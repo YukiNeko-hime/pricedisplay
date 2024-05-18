@@ -207,6 +207,7 @@ class Graph( _PriceDisplayWindow ):
 		'carets': ( '▼', '▲' ),
 		'extremes': ( '∨', '∧' ),
 		'extremesVisible': False,
+		'missing': '-',
 		'pastHours': 8
 	}
 	
@@ -217,6 +218,7 @@ class Graph( _PriceDisplayWindow ):
 		self._carets = opts['carets']
 		self._extremes = opts['extremes']
 		self._extremesVisible = opts['extremesVisible']
+		self._missing = opts['missing']
 		pastHours = opts['pastHours']
 		width = opts['width']
 		
@@ -390,6 +392,27 @@ class Graph( _PriceDisplayWindow ):
 		
 		return pos, neg
 	
+	def _AddMissingMarker( self, lines, visiblePrices ):
+		"""Adds a marker for missing prices."""
+		pos, neg = lines
+		
+		hour = 0
+		while hour < len( visiblePrices ):
+			if visiblePrices[hour] == None:
+				if len( pos ) > 1:
+					line = pos[-1]
+					line = line[ : hour ] + self._missing + line[ hour+1 : ]
+					pos[-1] = line
+				
+				else:
+					line = neg[0]
+					line = line[ : hour ] + self._missing + line[ hour+1 : ]
+					neg[0] = line
+			
+			hour += 1
+		
+		return pos, neg
+	
 	def _AddLines( self, lines, colors, prices ):
 		"""Adds the sparklines and the lower caret line."""
 		
@@ -410,7 +433,7 @@ class Graph( _PriceDisplayWindow ):
 		"""Adds negative lines to the graph."""
 		
 		win = self._win
-		symbols = self._carets + self._extremes
+		symbols = self._carets + self._extremes + tuple( self._missing )
 		
 		for line in lines[:-1]:
 			for hour in range( len(line) ):
@@ -426,7 +449,7 @@ class Graph( _PriceDisplayWindow ):
 		"""Adds positive lines to the graph."""
 		
 		win = self._win
-		symbols = self._carets + self._extremes
+		symbols = self._carets + self._extremes + tuple( self._missing )
 		
 		for line in lines[1:]:
 			for hour in range( len(line) ):
@@ -616,6 +639,7 @@ class Graph( _PriceDisplayWindow ):
 			lines = self._AddHighestMarker( lines, priceData )
 			lines = self._AddLowestMarker( lines, priceData )
 		
+		lines = self._AddMissingMarker( lines, visiblePrices )
 		lines = self._AddCarets( lines )
 		colors = self._GetColors( visiblePrices )
 		
