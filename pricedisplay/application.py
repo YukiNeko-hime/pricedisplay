@@ -144,7 +144,15 @@ class App:
 	def _HourlyUpdate( self, now ):
 		"""Updates the display every hour."""
 		
+		# try updating prices, if any of the prices for today are missing
 		prices = self._data.GetPrices()
+		if None in prices.today:
+			try:
+				self._data.Update()
+				prices = self._data.GetPrices()
+			except DataRequestError:
+				pass
+		
 		self._display.Update( prices )
 		self._lastDisplayUpdate = now
 	
@@ -154,6 +162,7 @@ class App:
 		delta = datetime.timedelta( minutes=self._updateFrequency )
 		while self._running:
 			now = datetime.datetime.now()
+			self._HourlyUpdate( now )
 			
 			# is midnight
 			if now.day != self._lastDataUpdate.day:
