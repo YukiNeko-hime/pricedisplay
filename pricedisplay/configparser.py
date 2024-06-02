@@ -7,7 +7,7 @@ import yaml
 from .exceptions import ConfigParsingError
 from .exceptions import CorruptedTemplateError, MissingTemplateError, TemplateParsingError
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 class _Queries:
 	def _YesNo( self, question ):
@@ -266,12 +266,8 @@ class Config(_Queries):
 		except OSError:
 			raise MissingTemplateError( 'Missing template: ' + self._templatePath )
 		
+		# always migrate the options, if an old config exists
 		if self._oldConfigFilePath:
-			migrate = self._YesNo( 'Do you want to migrate the old configuration file (version ' + self._oldVersion + ')?' )
-		else:
-			migrate = False
-		
-		if migrate:
 			self.Migrate( config )
 			question = 'Do you want to edit the new options?'
 		else:
