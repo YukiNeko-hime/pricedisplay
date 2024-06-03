@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -603,6 +603,10 @@ class Graph( _PriceDisplayWindow ):
 		end = start + self._size.width - 1
 		
 		visiblePrices = prices[ start : end ]
+		
+		# pad the prices with None to the width of the window
+		padding = self._size.width - 1 - len( visiblePrices )
+		visiblePrices = visiblePrices + [None]*padding
 		
 		return visiblePrices
 	
