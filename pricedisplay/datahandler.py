@@ -8,7 +8,7 @@ from requests.exceptions import *
 from .exceptions import MissingOptionError
 from .exceptions import NoDataError, DataParsingError, DataRequestError
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 class PriceData:
 	"""Represents the price data and its statistics."""
@@ -36,7 +36,14 @@ class PriceData:
 			self.average = round( average, 2 )
 	
 	def __add__( self, obj ):
-		return PriceData( self._data + obj._data )
+		if type( obj ) == PriceData:
+			return PriceData( self._data + obj._data )
+		
+		elif type( obj ) == list:
+			return PriceData( self._data + obj )
+		
+		else:
+			raise TypeError( 'unsupported operand type(s) for +: ' + str( type(obj)) + ' and PriceData' )
 	
 	def __bool__( self ):
 		return self._hasData
