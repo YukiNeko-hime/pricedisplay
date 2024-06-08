@@ -13,7 +13,7 @@ from .graphics import PriceDisplay
 
 from .exceptions import *
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 _debug = 0
 
@@ -175,7 +175,6 @@ class App:
 		delta = datetime.timedelta( minutes=self._updateFrequency )
 		while self._running:
 			now = datetime.datetime.now()
-			self._HourlyUpdate( now )
 			
 			# is midnight
 			if now.day != self._lastDataUpdate.day:
