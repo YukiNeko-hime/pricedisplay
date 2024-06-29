@@ -119,6 +119,21 @@ day:
         question: Day ends?
         value: 22
 
+terminal:
+    slow:
+        description: "Simulate slow terminal refresh by refreshing characters one by one."
+        essential: false
+        type: bool
+        question: Add delay to terminal refresh?
+        value: false
+    
+    delay:
+        description: "The delay between characters in seconds, when simulating a slow terminal."
+        essential: false
+        type: float
+        question: Character delay in seconds?
+        value: 0.03
+
 price:
     high:
         description: "Price above this value is considered high."

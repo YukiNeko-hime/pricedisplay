@@ -209,7 +209,9 @@ class Graph( _PriceDisplayWindow ):
 		'extremes': ( '∨', '∧' ),
 		'extremesVisible': False,
 		'missing': '-',
-		'pastHours': 8
+		'pastHours': 8,
+		'slowTerminal': False,
+		'terminalDelay': 0.01
 	}
 	
 	def __init__( self, pos, options, parent=None ):
@@ -220,8 +222,8 @@ class Graph( _PriceDisplayWindow ):
 		self._extremes = opts['extremes']
 		self._extremesVisible = opts['extremesVisible']
 		self._missing = opts['missing']
-		self._slow = True
-		self._delay = 0.01
+		self._slow = opts['slowTerminal']
+		self._delay = opts['terminalDelay']
 		pastHours = opts['pastHours']
 		width = opts['width']
 		
@@ -692,7 +694,7 @@ class _DetailWindow( _PriceDisplayWindow ):
 	_day = [ 6, 22 ]
 	_night = [ 22, 6 ]
 	_missing = '-'
-	_slow = True
+	_slow = False
 	_delay = 0.01
 	
 	def __init__( self, pos, size, options, parent=None ):
@@ -704,6 +706,8 @@ class _DetailWindow( _PriceDisplayWindow ):
 		self._day = [ start, end ]
 		self._night = [ end, start ]
 		self._missing = options['missing']
+		self._slow = options['slowTerminal']
+		self._delay = options['terminalDelay']
 		
 		_PriceDisplayWindow.__init__(self, size, pos, options, parent)
 	

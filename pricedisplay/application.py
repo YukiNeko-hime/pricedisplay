@@ -13,7 +13,7 @@ from .graphics import PriceDisplay
 
 from .exceptions import *
 
-__version__ = '0.6.1'
+__version__ = '0.7.0'
 
 _debug = 0
 
@@ -64,6 +64,9 @@ class App:
 				options['day.begins'],
 				options['day.ends']
 			)
+			
+			displayOptions['slowTerminal'] = options['terminal.slow']
+			displayOptions['terminalDelay'] = options['terminal.delay']
 			
 			displayOptions['pastHours'] = options['caret.pastHours']
 			displayOptions['preferred'] = options['layout.preferred']
