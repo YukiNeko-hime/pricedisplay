@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.6.2'
+__version__ = '0.6.3'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -325,7 +325,7 @@ class Graph( _PriceDisplayWindow ):
 		# one negative line
 		if len( lines ) == 2:
 			# price is positive
-			if lines[0][ hour ] == ' ':
+			if lines[0][ hour ] in (' ', '█'):	# right character is extended Asian character
 				lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
 				return lines
 			
@@ -355,7 +355,7 @@ class Graph( _PriceDisplayWindow ):
 			# last possible lines for the symbol
 			if i == 1:
 				# price is positive
-				if next[ hour ] == ' ':
+				if next[ hour ] in (' ', '█'):	# right character is extended Asian character
 					symbolLine = next[ : hour ] + symbol + next[ hour+1 : ]
 					lines[0] = symbolLine
 					break
