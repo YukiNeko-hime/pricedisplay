@@ -4,12 +4,13 @@ import curses
 import datetime
 import math
 import sparklines
+import time
 import warnings
 
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.6.3'
+__version__ = '0.7.0'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -219,6 +220,8 @@ class Graph( _PriceDisplayWindow ):
 		self._extremes = opts['extremes']
 		self._extremesVisible = opts['extremesVisible']
 		self._missing = opts['missing']
+		self._slow = True
+		self._delay = 0.01
 		pastHours = opts['pastHours']
 		width = opts['width']
 		
@@ -464,6 +467,10 @@ class Graph( _PriceDisplayWindow ):
 					win.addstr( line[hour], colors[hour] | curses.A_REVERSE )
 				else:
 					win.addstr( line[hour] )
+				
+				if self._slow:
+					win.refresh()
+					time.sleep(self._delay)
 			
 			win.addstr( '\n' )
 	
@@ -479,6 +486,10 @@ class Graph( _PriceDisplayWindow ):
 					win.addstr( line[hour], colors[hour] )
 				else:
 					win.addstr( line[hour] )
+				
+				if self._slow:
+					win.refresh()
+					time.sleep(self._delay)
 			
 			win.addstr( '\n' )
 	
@@ -681,6 +692,8 @@ class _DetailWindow( _PriceDisplayWindow ):
 	_day = [ 6, 22 ]
 	_night = [ 22, 6 ]
 	_missing = '-'
+	_slow = True
+	_delay = 0.01
 	
 	def __init__( self, pos, size, options, parent=None ):
 		start, end = options['day']
@@ -702,6 +715,17 @@ class _DetailWindow( _PriceDisplayWindow ):
 		else:
 			self._AddMissingDetail( name, linebreak )
 	
+	def _AddHeading( self, heading ):
+		win = self._win
+		
+		for s in heading:
+			win.addstr( s, curses.color_pair(4) )
+			if self._slow:
+				win.refresh()
+				time.sleep(self._delay)
+		
+		win.addstr( '\n' )
+	
 	def _AddExistingDetail( self, name, price, linebreak=True, textStyle=None ):
 		"""Adds a detail with a name and price, formatted for the display."""
 		
@@ -710,12 +734,21 @@ class _DetailWindow( _PriceDisplayWindow ):
 		p = self._FormatPrice( price )
 		c = self._PriceToColor( price )
 		
-		if textStyle:
-			win.addstr( n, textStyle )
-		else:
-			win.addstr( n )
+		for s in n:
+			if textStyle:
+				win.addstr( s, textStyle )
+			else:
+				win.addstr( s )
+			
+			if self._slow:
+				win.refresh()
+				time.sleep(self._delay)
 		
-		win.addstr( p, c | curses.A_BOLD )
+		for s in p:
+			win.addstr( s, c | curses.A_BOLD )
+			if self._slow:
+				win.refresh()
+				time.sleep(self._delay)
 		
 		if linebreak:
 			win.addstr( '\n' )
@@ -727,8 +760,17 @@ class _DetailWindow( _PriceDisplayWindow ):
 		n = name.ljust( 10 )
 		p = self._missing.rjust( 6 )
 		
-		win.addstr( n )
-		win.addstr( p, curses.A_BOLD )
+		for s in n:
+			win.addstr( s )
+			if self._slow:
+				win.refresh()
+				time.sleep(self._delay)
+		
+		for s in p:
+			win.addstr( s, curses.A_BOLD )
+			if self._slow:
+				win.refresh()
+				time.sleep(self._delay)
 		
 		if linebreak:
 			win.addstr( '\n' )
@@ -794,7 +836,7 @@ class DetailsCurrent( _DetailWindow ):
 		win = self._win
 		win.clear()
 		
-		win.addstr( 'CURRENT\n', curses.color_pair(4) )
+		self._AddHeading( 'CURRENT' )
 		self._AddHour( prices )
 		if start <= now.hour and now.hour < end:
 			self._AddDayAverage( prices )
@@ -863,7 +905,7 @@ class DetailsNext( _DetailWindow ):
 		
 		win = self._win
 		win.clear()
-		win.addstr( 'NEXT\n', curses.color_pair(4) )
+		self._AddHeading( 'NEXT' )
 		self._AddHour( prices )
 		self._AddAverages( prices )
 		win.refresh()
@@ -889,7 +931,7 @@ class DetailsToday( _DetailWindow ):
 		
 		win = self._win
 		win.clear()
-		win.addstr( 'TODAY\n', curses.color_pair(4) )
+		self._AddHeading( 'TODAY' )
 		self._AddPrices( prices )
 		win.refresh()
 
@@ -914,7 +956,7 @@ class DetailsTomorrow( _DetailWindow ):
 		
 		win = self._win
 		win.clear()
-		win.addstr( 'TOMORROW\n', curses.color_pair(4) )
+		self._AddHeading( 'TOMORROW' )
 		self._AddPrices( prices )
 		win.refresh()
 
