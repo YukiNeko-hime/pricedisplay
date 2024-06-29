@@ -9,7 +9,7 @@ import warnings
 from .exceptions import MissingOptionError
 from .exceptions import CollectionSizeError, WindowSizeError, WindowPositionError
 
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 
 class Point:
 	"""Represents a point on the terminal screen."""
@@ -317,13 +317,22 @@ class Graph( _PriceDisplayWindow ):
 		if not 0 <= hour < len( lines[0] ):
 			return lines
 		
+		# all prices are positive
 		if len( lines ) == 1:
 			lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
 			return lines
 		
+		# one negative line
 		if len( lines ) == 2:
-			lines[1] = lines[1][ : hour ] + symbol + lines[1][ hour+1 : ]
-			return lines
+			# price is positive
+			if lines[0][ hour ] == ' ':
+				lines[0] = lines[0][ : hour ] + symbol + lines[0][ hour+1 : ]
+				return lines
+			
+			# small negative price
+			else:
+				lines[1] = lines[1][ : hour ] + symbol + lines[1][ hour+1 : ]
+				return lines
 		
 		i = iMax = len( lines ) - 2
 		while i > 0:
@@ -343,11 +352,19 @@ class Graph( _PriceDisplayWindow ):
 				lines[i + 1] = symbolLine
 				break
 			
-			# last possible line for the symbol
+			# last possible lines for the symbol
 			if i == 1:
-				symbolLine = next[ : hour ] + symbol + next[ hour+1 : ]
-				lines[0] = symbolLine
-				break
+				# price is positive
+				if next[ hour ] == ' ':
+					symbolLine = next[ : hour ] + symbol + next[ hour+1 : ]
+					lines[0] = symbolLine
+					break
+				
+				# small negative price
+				else:
+					symbolLine = cur[ : hour ] + symbol + cur[ hour+1 : ]
+					lines[1] = symbolLine
+					break
 			
 			i -= 1
 		
