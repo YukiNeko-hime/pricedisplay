@@ -18,6 +18,10 @@ You can test the build with:
 
 ## Installing
 
+Install the package via Pipx:
+
+`pipx install pricedisplay --include-deps`
+
 Install the package from PyPI:
 
 `python -m pip install pricedisplay`
@@ -32,6 +36,10 @@ Currently you need Python 3.9 or greater.
 Run the display with the command:
 
 `python -m pricedisplay`
+
+Or with pipx:
+
+`pipx run --spec pricedisplay python -m pricedisplay`
 
 The package creates a settings file config.yml in your config path.
 
