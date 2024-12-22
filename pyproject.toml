@@ -26,6 +26,9 @@ requests = "^2.31.0"
 sparklines = "^0.4.2"
 argparse = "^1.4.0"
 
+[tool.poetry.scripts]
+pricedisplay = "pricedisplay.application:Main"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
